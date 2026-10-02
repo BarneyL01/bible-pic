@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
 $pkgDir = 'com\biblepic\bible_pic'
-flutter create --platforms=android --org com.biblepic --project-name bible_pic .
+flutter create --no-pub --platforms=android --org com.biblepic --project-name bible_pic .
 if ($LASTEXITCODE -ne 0) { throw 'flutter create failed' }
 
 $kt = "android\app\src\main\kotlin\$pkgDir"

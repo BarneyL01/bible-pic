@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PKG=com.biblepic.bible_pic
-flutter create --platforms=android --org com.biblepic --project-name bible_pic .
+flutter create --no-pub --platforms=android --org com.biblepic --project-name bible_pic .
 
 KT_DIR="android/app/src/main/kotlin/${PKG//./\/}"
 mkdir -p "$KT_DIR" android/app/src/main/res/layout android/app/src/main/res/xml
