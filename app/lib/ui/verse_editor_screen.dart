@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +6,7 @@ import '../data/providers.dart';
 import '../data/repository.dart';
 import '../db/database.dart';
 import 'box_position_screen.dart';
+import 'photo_thumb.dart';
 import 'verse_canvas.dart';
 
 class VerseEditorScreen extends ConsumerStatefulWidget {
@@ -29,7 +28,7 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
   String? _themeId;
   BoxRect? _override;
   Set<String> _topicIds = {};
-  File? _previewFile;
+  ImageProvider? _previewImage;
   Photo? _previewPhoto;
 
   @override
@@ -66,28 +65,30 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
     if (_pinnedPhotoId != null) photo = await repo.photoById(_pinnedPhotoId!);
     photo ??= (await repo.allPhotos()).firstOrNull;
     _previewPhoto = photo;
-    _previewFile = photo == null ? null : await repo.photoFile(photo);
+    _previewImage = photo == null ? null : await repo.photoImage(photo);
     if (mounted) setState(() {});
   }
 
   Verse _build() => Verse(
-        id: _id,
-        reference: _reference.text.trim(),
-        body: _body.text.trim(),
-        translation:
-            _translation.text.trim().isEmpty ? null : _translation.text.trim(),
-        pinnedPhotoId: _pinnedPhotoId,
-        themeId: _themeId,
-        boxX: _override?.x,
-        boxY: _override?.y,
-        boxW: _override?.w,
-        favourite: _favourite,
-      );
+    id: _id,
+    reference: _reference.text.trim(),
+    body: _body.text.trim(),
+    translation: _translation.text.trim().isEmpty
+        ? null
+        : _translation.text.trim(),
+    pinnedPhotoId: _pinnedPhotoId,
+    themeId: _themeId,
+    boxX: _override?.x,
+    boxY: _override?.y,
+    boxW: _override?.w,
+    favourite: _favourite,
+  );
 
   Future<void> _save() async {
     if (_reference.text.trim().isEmpty || _body.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reference and text are required.')));
+        const SnackBar(content: Text('Reference and text are required.')),
+      );
       return;
     }
     try {
@@ -96,8 +97,9 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
           .saveVerse(_build(), _topicIds.toList());
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Could not save: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not save: $e')));
       }
       return;
     }
@@ -111,11 +113,13 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
         title: const Text('Delete this verse?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -126,8 +130,6 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
 
   Future<void> _pickPhoto() async {
     final photos = ref.read(photosProvider).value ?? const <Photo>[];
-    final repo = ref.read(repositoryProvider);
-    final dir = await repo.photoDir();
     if (!mounted) return;
     final picked = await showDialog<String>(
       context: context,
@@ -147,8 +149,11 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                 for (final p in photos)
                   GestureDetector(
                     onTap: () => Navigator.pop(context, p.id),
-                    child: Image.file(File('${dir.path}/${p.path}'),
-                        fit: BoxFit.cover, cacheWidth: 200),
+                    child: PhotoThumb(
+                      key: ValueKey(p.id),
+                      photo: p,
+                      cacheWidth: 200,
+                    ),
                   ),
               ],
             ),
@@ -182,7 +187,9 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                 TextField(
                   controller: _reference,
                   decoration: const InputDecoration(
-                      labelText: 'Reference', hintText: 'John 3:16'),
+                    labelText: 'Reference',
+                    hintText: 'John 3:16',
+                  ),
                   onChanged: (_) => setState(() {}),
                 ),
                 TextField(
@@ -194,7 +201,8 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                 TextField(
                   controller: _translation,
                   decoration: const InputDecoration(
-                      labelText: 'Translation (optional)'),
+                    labelText: 'Translation (optional)',
+                  ),
                 ),
                 SwitchListTile(
                   title: const Text('Favourite'),
@@ -210,8 +218,10 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                       FilterChip(
                         label: Text(t.name),
                         selected: _topicIds.contains(t.id),
-                        onSelected: (s) => setState(() =>
-                            s ? _topicIds.add(t.id) : _topicIds.remove(t.id)),
+                        onSelected: (s) => setState(
+                          () =>
+                              s ? _topicIds.add(t.id) : _topicIds.remove(t.id),
+                        ),
                       ),
                     ActionChip(
                       avatar: const Icon(Icons.add, size: 16),
@@ -223,9 +233,11 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Pinned photo'),
-                  subtitle: Text(_pinnedPhotoId == null
-                      ? 'None — paired automatically'
-                      : 'Pinned'),
+                  subtitle: Text(
+                    _pinnedPhotoId == null
+                        ? 'None — paired automatically'
+                        : 'Pinned',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _pickPhoto,
                 ),
@@ -234,7 +246,9 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                   decoration: const InputDecoration(labelText: 'Theme'),
                   items: [
                     const DropdownMenuItem(
-                        value: null, child: Text('Use topic / default theme')),
+                      value: null,
+                      child: Text('Use topic / default theme'),
+                    ),
                     for (final t in themes)
                       DropdownMenuItem(value: t.id, child: Text(t.name)),
                   ],
@@ -243,8 +257,10 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Text('Text box position',
-                        style: Theme.of(context).textTheme.titleSmall),
+                    Text(
+                      'Text box position',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                     const Spacer(),
                     if (_override != null)
                       TextButton(
@@ -253,9 +269,11 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                       ),
                   ],
                 ),
-                Text(_override == null
-                    ? 'Using the photo default.'
-                    : 'Custom position for this verse, on every photo.'),
+                Text(
+                  _override == null
+                      ? 'Using the photo default.'
+                      : 'Custom position for this verse, on every photo.',
+                ),
                 const SizedBox(height: 8),
                 FilledButton.icon(
                   onPressed: _position,
@@ -275,10 +293,9 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
   Widget _preview() {
     final verse = _build();
     return FutureBuilder<AppTheme>(
-      future: ref.read(repositoryProvider).resolveThemeFor(
-            verse,
-            topicIds: _topicIds.toList(),
-          ),
+      future: ref
+          .read(repositoryProvider)
+          .resolveThemeFor(verse, topicIds: _topicIds.toList()),
       builder: (context, snap) {
         final theme = snap.data;
         if (theme == null) return const SizedBox.shrink();
@@ -287,7 +304,7 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
           text: verse.body.isEmpty ? 'Verse text appears here.' : verse.body,
           theme: theme,
           box: effectiveBox(verse, _previewPhoto),
-          photoFile: _previewFile,
+          photoProvider: _previewImage,
         );
       },
     );
@@ -299,15 +316,17 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
         .read(repositoryProvider)
         .resolveThemeFor(verse, topicIds: _topicIds.toList());
     if (!mounted) return;
-    final b = await Navigator.of(context).push<BoxRect>(MaterialPageRoute(
-      builder: (_) => BoxPositionScreen(
-        reference: verse.reference.isEmpty ? 'Reference' : verse.reference,
-        text: verse.body.isEmpty ? 'Verse text appears here.' : verse.body,
-        theme: theme,
-        initial: effectiveBox(verse, _previewPhoto),
-        photoFile: _previewFile,
+    final b = await Navigator.of(context).push<BoxRect>(
+      MaterialPageRoute(
+        builder: (_) => BoxPositionScreen(
+          reference: verse.reference.isEmpty ? 'Reference' : verse.reference,
+          text: verse.body.isEmpty ? 'Verse text appears here.' : verse.body,
+          theme: theme,
+          initial: effectiveBox(verse, _previewPhoto),
+          photoProvider: _previewImage,
+        ),
       ),
-    ));
+    );
     if (b != null) setState(() => _override = b);
   }
 
@@ -320,11 +339,13 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
         content: TextField(controller: c, autofocus: true),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, c.text),
-              child: const Text('Add')),
+            onPressed: () => Navigator.pop(context, c.text),
+            child: const Text('Add'),
+          ),
         ],
       ),
     );

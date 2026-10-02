@@ -80,10 +80,12 @@ a correction.
 ### Verify before claiming
 <!-- provenance: compensation@claude-fable-5-1 | retest: ask for a status summary mid-task and
      check each claim against a tool result; the migration notes say keep this on 5.1 -->
-Report only work you can point to a tool result for. The Flutter SDK is **not** installed in
-Claude Code cloud containers, so `flutter` and `dart` commands fail there; in a cloud session
-a Flutter check is **unverified**, and the summary says so. The first build of `app/` was
-written in such a session: it has never been analysed, built, or run.
+Report only work you can point to a tool result for. The Flutter SDK is **not** preinstalled in
+Claude Code cloud containers, but `app/tool/cloud_setup.sh` installs it (see `app/CLAUDE.md`,
+"Testing"). Run `flutter analyze`, `flutter test` and the browser tests there before reporting a
+change to `app/` as working. A check that could not run (a blocked host, no browser) is
+**unverified**, and the summary says so. Android-only behaviour (the widget, the share sheet, drift's
+background isolate) is not covered by the automated tests.
 
 ## Commands
 
@@ -94,5 +96,5 @@ written in such a session: it has never been analysed, built, or run.
 | Run the eval suite | `claude plugin eval . --no-publish` |
 | Record an agreed term | `/vocabulary` |
 | Install the base into another app repo | `/adopt-base` |
-| Set up and run Bible Pic | See `app/CLAUDE.md`, "First-time setup" |
+| Set up, run and test Bible Pic | See `app/README.md`, or `app/CLAUDE.md` "First-time setup" and "Testing" |
 | Resolve TBD stack choices | `/flutter-stack-decide` |

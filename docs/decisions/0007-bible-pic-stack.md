@@ -1,6 +1,6 @@
 # 0007. Bible Pic stack: Android-only, Riverpod, drift
 
-- **Status:** Accepted
+- **Status:** Accepted. The *Surfaces* row is superseded by [0008](0008-bible-pic-ships-to-web-and-android.md).
 - **Date:** 2026-10-02
 - **Deciders:** repository owner (Bible Verse App v1 spec)
 

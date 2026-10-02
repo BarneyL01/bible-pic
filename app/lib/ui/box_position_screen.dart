@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
@@ -16,14 +14,14 @@ class BoxPositionScreen extends StatefulWidget {
     required this.text,
     required this.theme,
     required this.initial,
-    this.photoFile,
+    this.photoProvider,
   });
 
   final String reference;
   final String text;
   final AppTheme theme;
   final BoxRect initial;
-  final File? photoFile;
+  final ImageProvider? photoProvider;
 
   @override
   State<BoxPositionScreen> createState() => _BoxPositionScreenState();
@@ -43,7 +41,7 @@ class _BoxPositionScreenState extends State<BoxPositionScreen> {
             text: widget.text,
             theme: widget.theme,
             box: _box,
-            photoFile: widget.photoFile,
+            photoProvider: widget.photoProvider,
             onBoxChanged: (b) => setState(() => _box = b),
           ),
           Positioned(

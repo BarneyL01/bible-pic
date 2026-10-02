@@ -1,7 +1,8 @@
 # Bible Pic
 
-A personal Android app that shows Bible verses I enter myself on photos I upload, organised by
-topic, with swiping and a home-screen widget. Spec: Bible Verse App v1 (2026-10-02).
+A personal app, for Android and the web, that shows Bible verses I enter myself on photos I
+upload, organised by topic, with swiping and an Android home-screen widget. Spec: Bible Verse App
+v1 (2026-10-02). `README.md` is the user-facing guide; this file is for working on the code.
 Adopted from [agent-base](https://github.com/BarneyL01/agent-base); this directory lives inside
 that repository (ADR 0006), so the repo-root `CLAUDE.md` also applies.
 
@@ -19,34 +20,64 @@ that repository (ADR 0006), so the repo-root `CLAUDE.md` also applies.
 | --- | --- |
 | App name | Bible Pic |
 | Android package id | `com.biblepic.bible_pic` |
-| Minimum Android SDK | **TBD** — set in `android/app/build.gradle*` after `tool/setup_android.sh`; `home_widget` and the Flutter SDK constrain it |
-| Surfaces | android |
-| Primary surface | android (the only surface; ADR 0007) |
+| Minimum Android SDK | **TBD** — set in `android/app/build.gradle*` after `tool/setup_android.*`; `home_widget` and the Flutter SDK constrain it |
+| Surfaces | android, web ([ADR 0008](../docs/decisions/0008-bible-pic-ships-to-web-and-android.md)) |
+| Primary surface | **TBD** — which one wins when Android and web conflict (the widget exists only on Android) |
+| User's shell | PowerShell on Windows. Commands given to the user are PowerShell, run from a stated directory, in order |
 
 ## First-time setup
 
-Needs the Flutter SDK (not present in Claude Code cloud containers). From `app/`:
+Needs the Flutter SDK. Run in PowerShell from the repository root, in this order; `flutter analyze`
+and `flutter test` are only meaningful after steps 2 to 4.
 
 ```powershell
-.\tool\setup_android.ps1                               # Windows: flutter create + widget files + manifest patch
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs # generates lib/db/database.g.dart
-flutter analyze                                          # only meaningful after the three steps above
-flutter run
+cd app                                                    # 1. pubspec.yaml is here
+flutter pub get                                           # 2.
+dart run build_runner build --delete-conflicting-outputs  # 3. generates lib/db/database.g.dart
+dart run tool/fetch_web_assets.dart                       # 4. web only: sqlite3.wasm, drift_worker.js
+flutter run -d chrome                                     # web
+.\tool\setup_android.ps1; flutter run                     # Android, once per checkout
 ```
 
-On macOS or Linux run `tool/setup_android.sh` instead of the `.ps1`. Both scripts are idempotent. After it runs, `applicationId` in
-`android/app/build.gradle*` must read `com.biblepic.bible_pic`.
+On macOS or Linux use `tool/setup_android.sh`. After the Android setup script runs, `applicationId`
+in `android/app/build.gradle*` must read `com.biblepic.bible_pic`. The user must be told which
+branch holds the files and to `git pull` it.
+
+## Testing
+
+<!-- provenance: compensation@claude-fable-5-1 | retest: ask for a UI change in a cloud container and check whether the reply reports a run of flutter test and the e2e suite, or only "analyze is clean" -->
+Analyzer-clean is not working. Before reporting a change as done, run it:
+
+| Check | Command (inside `app/`) |
+| --- | --- |
+| Format | `dart format --set-exit-if-changed lib test tool` |
+| Analyse | `flutter analyze` |
+| Unit and widget tests | `flutter test` |
+| Browser tests | `flutter build web --release --no-web-resources-cdn --base-href /app/`, then `cd e2e; npm install; node run.js` |
+
+A UI change gets a browser check: add or extend a spec in `e2e/specs/` and measure the result (pixel
+positions, text read from the accessibility tree) rather than only taking a screenshot. A data change
+gets a test in `test/`.
+
+<!-- provenance: environment | Flutter is not preinstalled in Claude Code cloud containers; curl is denied by .claude/settings.json -->
+In a Claude Code cloud container there is no Flutter SDK. Install it with `source app/tool/cloud_setup.sh`
+(uses `python3`, since `curl` is denied). It needs the environment to allow `storage.googleapis.com`,
+`pub.dev` and `github.com` release downloads. If a host is blocked, say which one; the summary then
+marks the checks that did not run as **unverified**.
 
 ## Layout
 
 | Path | Holds |
 | --- | --- |
 | `lib/db/` | drift tables and `AppDatabase` (`database.g.dart` is generated) |
-| `lib/data/` | `Repository` (all queries, photo pairing, theme resolution), providers, bulk-import parsers |
-| `lib/services/` | backup/restore, widget rendering (`WidgetSync`) |
-| `lib/ui/` | screens and the shared `VerseCanvas` |
+| `lib/data/` | `Repository` (all queries, photo pairing, theme resolution), providers, bulk-import parsers, the `PhotoStorage` interface |
+| `lib/services/` | backup/restore, widget rendering (`WidgetSync`), `platform*.dart` (the only place `dart:io`, `path_provider` and `share_plus` are used, and the web equivalents) |
+| `lib/ui/` | screens, the shared `VerseCanvas`, the box editor, the cropper |
+| `web/` | web shell; `sqlite3.wasm` and `drift_worker.js` are downloaded, not committed |
 | `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
+| `test/` | unit and widget tests |
+| `e2e/` | Playwright browser tests against `build/web` |
+| `tool/` | setup scripts, `fetch_web_assets.dart`, `cloud_setup.sh` |
 
 ## Stack decisions
 
@@ -62,11 +93,11 @@ reasoning.
 | Project structure | **TBD** — the code is currently layered (`db`, `data`, `services`, `ui`); not yet decided as a choice |
 | Models / serialisation | drift-generated data classes; backup JSON uses their `toJson`/`fromJson`. Further approach **TBD** |
 | Networking | None in v1; no network access in the app. Revisit only if a feature needs it |
-| Local persistence | `drift` over SQLite, ids are UUID strings, photos are files under the app documents folder referenced by relative path. See ADR 0007. |
+| Local persistence | `drift` over SQLite, ids are UUID strings. Photo bytes go through `PhotoStorage`: files under the app documents folder on Android, `photo_blobs` rows in the same database on web; both referenced by relative name. See ADR 0007 and ADR 0008. |
 | Dependency injection | Riverpod providers (`databaseProvider`, `repositoryProvider`) |
-| Testing | **TBD** — what is unit-tested, what is widget-tested, what coverage is expected |
+| Testing | `flutter test` for data, backup and screen flows; Playwright in `e2e/` for the built web site. See ADR 0008 and "Testing" above. Coverage target **TBD** |
 | Lints | **TBD** — `flutter_lints` is in `pubspec.yaml` but not yet decided as a choice |
-| CI | **TBD** — what runs on a pull request |
+| CI | `.github/workflows/web.yml`: format, analyse, test, web build, browser tests (non-blocking), deploy to GitHub Pages from `main`. See ADR 0008. |
 
 ## Working rules
 
@@ -98,13 +129,26 @@ packages ship faster than any model's training data. Before writing code against
 read its version in `pubspec.lock` and its API on pub.dev for that version; do not write from
 memory. The same applies to Flutter SDK APIs: `flutter --version` is the truth, not recall.
 
-### Android only
-<!-- provenance: environment | ADR 0007: Android-only, sideloaded; re-check if a web build is added -->
-This app ships to Android only. Do not add `kIsWeb` branches, web plugins, or a `web/` folder.
-Every new permission in `AndroidManifest.xml` is called out in the change description with the
-reason, because reviewers cannot see it in the Dart diff. Assume the minimum SDK in the identity
-table, not the latest. A plugin without Android support is a blocker to raise, not something to
-route around silently.
+### Two surfaces, every change
+<!-- provenance: environment | ADR 0008: Android and web; re-check if a surface is dropped -->
+This app ships to Android and the web. A change that works on one and breaks the other is incomplete.
+
+- **Shared code compiles for both.** `dart:io`, `path_provider` and `share_plus` appear only in
+  `lib/services/platform_io.dart`; the web counterpart is `platform_web.dart`. Anything new that
+  touches files or platform APIs goes behind `lib/services/platform.dart`.
+- **Web has no home screen.** Widget code stays behind `kHomeWidgetSupported`.
+- **Android:** every new permission in `AndroidManifest.xml` is called out in the change description
+  with the reason, because reviewers cannot see it in the Dart diff. Assume the minimum SDK in the
+  identity table, not the latest.
+- A plugin without support on one surface is a blocker to raise, not something to route around
+  silently.
+
+### Canvas and direct manipulation
+<!-- provenance: compensation@claude-fable-5-1 | retest: ask for a draggable overlay and check whether it is placed in a scroll view or uses a pan gesture; both were done in the first build and failed on touch -->
+Positions are edited and shown on the same canvas shape: the full window (the phone frame on wide
+windows). Handles that move or resize something use `Listener.onPointerMove`, not a pan gesture,
+and live outside scroll views. Whole-row saves use `insertOrReplace`, never
+`insertOnConflictUpdate`, because the latter skips nulls (see `docs/lessons.md`).
 
 ### Data changes
 <!-- provenance: contract | backup restore reads data.json written by an earlier schema version -->
@@ -162,5 +206,6 @@ Record here anything this app does differently from `agent-base`, with the reaso
 | Departure | Reason |
 | --- | --- |
 | Lives in `app/` of the agent-base repository | ADR 0006 |
-| "Both surfaces, every change" replaced by "Android only" | Spec: Android only, no web build (ADR 0007) |
-| Stack rows decided from the spec; routing, structure, testing, lints, CI left `TBD` | ADR 0007 records only what the spec states |
+| "Both surfaces" rule rewritten for the widget and `platform*.dart` | The widget exists only on Android; file access is split by platform (ADR 0008) |
+| Added Testing, Canvas and direct manipulation, and Data changes rules | App-specific; they would not apply to another app |
+| Stack rows decided from the spec, ADR 0007 and ADR 0008; routing, structure, lints, primary surface left `TBD` | The ADRs record only what the owner stated or asked for |

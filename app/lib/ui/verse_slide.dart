@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,7 +9,11 @@ import 'verse_canvas.dart';
 /// Full-screen verse on its photo. Tap toggles favourite; the lock button
 /// pins the shown photo to the verse.
 class VerseSlide extends ConsumerStatefulWidget {
-  const VerseSlide({super.key, required this.initialVerse, required this.photo});
+  const VerseSlide({
+    super.key,
+    required this.initialVerse,
+    required this.photo,
+  });
   final Verse initialVerse;
   final Photo? photo;
 
@@ -20,15 +22,15 @@ class VerseSlide extends ConsumerStatefulWidget {
 }
 
 class _VerseSlideState extends ConsumerState<VerseSlide> {
-  late Future<File?> _file;
+  late Future<ImageProvider?> _image;
 
   @override
   void initState() {
     super.initState();
     final p = widget.photo;
-    _file = p == null
+    _image = p == null
         ? Future.value(null)
-        : ref.read(repositoryProvider).photoFile(p);
+        : ref.read(repositoryProvider).photoImage(p);
   }
 
   @override
@@ -36,7 +38,8 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
     final repo = ref.read(repositoryProvider);
     // Live updates (favourite, edits) win; the snapshot covers the first frame.
     final verse =
-        ref.watch(verseProvider(widget.initialVerse.id)).value ?? widget.initialVerse;
+        ref.watch(verseProvider(widget.initialVerse.id)).value ??
+        widget.initialVerse;
     // Re-resolve the theme whenever themes or topics change.
     ref.watch(themesProvider);
     ref.watch(topicsProvider);
@@ -45,15 +48,19 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
       builder: (context, themeSnap) {
         if (themeSnap.hasError) {
           return Center(
-              child: Text('Could not load theme: ${themeSnap.error}',
-                  textAlign: TextAlign.center));
+            child: Text(
+              'Could not load theme: ${themeSnap.error}',
+              textAlign: TextAlign.center,
+            ),
+          );
         }
         final theme = themeSnap.data;
         if (theme == null) return const SizedBox.shrink();
-        return FutureBuilder<File?>(
-          future: _file,
+        return FutureBuilder<ImageProvider?>(
+          future: _image,
           builder: (context, fileSnap) {
-            final isPinned = verse.pinnedPhotoId != null &&
+            final isPinned =
+                verse.pinnedPhotoId != null &&
                 verse.pinnedPhotoId == widget.photo?.id;
             return GestureDetector(
               onTap: () => repo.setFavourite(verse.id, !verse.favourite),
@@ -67,7 +74,7 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
                     text: verse.body,
                     theme: theme,
                     box: effectiveBox(verse, widget.photo),
-                    photoFile: fileSnap.data,
+                    photoProvider: fileSnap.data,
                   ),
                   Positioned(
                     top: 8,
@@ -87,7 +94,9 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
                               onPressed: isPinned
                                   ? null
                                   : () => repo.pinPhoto(
-                                      verse.id, widget.photo!.id),
+                                      verse.id,
+                                      widget.photo!.id,
+                                    ),
                             ),
                           Icon(
                             verse.favourite

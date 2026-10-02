@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -43,11 +42,12 @@ class _BulkImportScreenState extends ConsumerState<BulkImportScreen> {
 
   Future<void> _fromJson() async {
     final res = await FilePicker.pickFile(
-        type: FileType.custom, allowedExtensions: ['json']);
-    final path = res?.path;
-    if (path == null) return;
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    if (res == null) return;
     try {
-      await _import(parseVerseJson(await File(path).readAsString(encoding: utf8)));
+      await _import(parseVerseJson(utf8.decode(await res.readAsBytes())));
     } on FormatException catch (e) {
       _say('Invalid JSON file: ${e.message}');
     }
@@ -73,18 +73,25 @@ class _BulkImportScreenState extends ConsumerState<BulkImportScreen> {
             maxLines: 16,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
-              hintText: 'John 3:16 (ESV)\nFor God so loved the world…\n# love, salvation',
+              hintText:
+                  'John 3:16 (ESV)\nFor God so loved the world…\n# love, salvation',
             ),
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _fromText, child: const Text('Import pasted text')),
+          FilledButton(
+            onPressed: _fromText,
+            child: const Text('Import pasted text'),
+          ),
           const Divider(height: 32),
           const Text(
             'JSON file: an array of objects with "reference" and "text", and '
             'optionally "translation", "topics" (array of names) and "favourite" (true/false).',
           ),
           const SizedBox(height: 8),
-          OutlinedButton(onPressed: _fromJson, child: const Text('Pick a JSON file')),
+          OutlinedButton(
+            onPressed: _fromJson,
+            child: const Text('Pick a JSON file'),
+          ),
         ],
       ),
     );

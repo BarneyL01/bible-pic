@@ -9,8 +9,16 @@ import 'verse_canvas.dart';
 const kFonts = ['sans-serif', 'serif', 'monospace', 'cursive'];
 const kAlignments = ['left', 'center', 'right'];
 const _swatches = <int>[
-  0xFFFFFFFF, 0xFF000000, 0xFFFFF59D, 0xFFB3E5FC, 0xFFC8E6C9, 0xFFF8BBD0,
-  0xFF3E2723, 0xFF0D47A1, 0xFF1B5E20, 0xFF4A148C,
+  0xFFFFFFFF,
+  0xFF000000,
+  0xFFFFF59D,
+  0xFFB3E5FC,
+  0xFFC8E6C9,
+  0xFFF8BBD0,
+  0xFF3E2723,
+  0xFF0D47A1,
+  0xFF1B5E20,
+  0xFF4A148C,
 ];
 
 class ThemesScreen extends ConsumerWidget {
@@ -23,8 +31,10 @@ class ThemesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Themes')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => const ThemeEditorScreen())),
+        tooltip: 'Add theme',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const ThemeEditorScreen()),
+        ),
         child: const Icon(Icons.add),
       ),
       body: ListView(
@@ -36,13 +46,20 @@ class ThemesScreen extends ConsumerWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: Color(t.panelColor)
-                      .withValues(alpha: t.panelOpacity.clamp(0.2, 1)),
-                  borderRadius: BorderRadius.circular(t.cornerRadius.clamp(0, 20)),
+                  color: Color(
+                    t.panelColor,
+                  ).withValues(alpha: t.panelOpacity.clamp(0.2, 1)),
+                  borderRadius: BorderRadius.circular(
+                    t.cornerRadius.clamp(0, 20),
+                  ),
                 ),
-                child: Text('Aa',
-                    style: TextStyle(
-                        color: Color(t.textColor), fontFamily: t.font)),
+                child: Text(
+                  'Aa',
+                  style: TextStyle(
+                    color: Color(t.textColor),
+                    fontFamily: t.font,
+                  ),
+                ),
               ),
               title: Text(t.name),
               subtitle: t.isDefault ? const Text('Default') : null,
@@ -50,9 +67,13 @@ class ThemesScreen extends ConsumerWidget {
                   ? null
                   : TextButton(
                       onPressed: () => repo.setDefaultTheme(t.id),
-                      child: const Text('Make default')),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => ThemeEditorScreen(theme: t))),
+                      child: const Text('Make default'),
+                    ),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ThemeEditorScreen(theme: t),
+                ),
+              ),
             ),
         ],
       ),
@@ -75,7 +96,8 @@ class _ThemeEditorScreenState extends ConsumerState<ThemeEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _t = widget.theme ??
+    _t =
+        widget.theme ??
         AppTheme(
           id: newId(),
           name: 'New theme',
@@ -95,7 +117,11 @@ class _ThemeEditorScreenState extends ConsumerState<ThemeEditorScreen> {
   Future<void> _save() async {
     await ref
         .read(repositoryProvider)
-        .saveTheme(_t.copyWith(name: _name.text.trim().isEmpty ? _t.name : _name.text.trim()));
+        .saveTheme(
+          _t.copyWith(
+            name: _name.text.trim().isEmpty ? _t.name : _name.text.trim(),
+          ),
+        );
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -105,31 +131,32 @@ class _ThemeEditorScreenState extends ConsumerState<ThemeEditorScreen> {
   }
 
   Widget _colors(String label, int current, ValueChanged<int> onPick) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label),
+      Wrap(
+        spacing: 8,
         children: [
-          Text(label),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final c in _swatches)
-                GestureDetector(
-                  onTap: () => onPick(c),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Color(c),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          width: current == c ? 3 : 1,
-                          color: current == c ? Colors.amber : Colors.grey),
-                    ),
+          for (final c in _swatches)
+            GestureDetector(
+              onTap: () => onPick(c),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Color(c),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    width: current == c ? 3 : 1,
+                    color: current == c ? Colors.amber : Colors.grey,
                   ),
                 ),
-            ],
-          ),
+              ),
+            ),
         ],
-      );
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -146,18 +173,25 @@ class _ThemeEditorScreenState extends ConsumerState<ThemeEditorScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Name')),
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
           DropdownButtonFormField<String>(
             initialValue: _t.font,
             decoration: const InputDecoration(labelText: 'Font'),
-            items: [for (final f in kFonts) DropdownMenuItem(value: f, child: Text(f))],
+            items: [
+              for (final f in kFonts)
+                DropdownMenuItem(value: f, child: Text(f)),
+            ],
             onChanged: (v) => setState(() => _t = _t.copyWith(font: v)),
           ),
           DropdownButtonFormField<String>(
             initialValue: _t.alignment,
             decoration: const InputDecoration(labelText: 'Alignment'),
-            items: [for (final a in kAlignments) DropdownMenuItem(value: a, child: Text(a))],
+            items: [
+              for (final a in kAlignments)
+                DropdownMenuItem(value: a, child: Text(a)),
+            ],
             onChanged: (v) => setState(() => _t = _t.copyWith(alignment: v)),
           ),
           Text('Verse text size: ${_t.fontSize.round()}'),
@@ -175,11 +209,17 @@ class _ThemeEditorScreenState extends ConsumerState<ThemeEditorScreen> {
             onChanged: (v) =>
                 setState(() => _t = _t.copyWith(referenceFontSize: v)),
           ),
-          _colors('Text colour', _t.textColor,
-              (c) => setState(() => _t = _t.copyWith(textColor: c))),
+          _colors(
+            'Text colour',
+            _t.textColor,
+            (c) => setState(() => _t = _t.copyWith(textColor: c)),
+          ),
           const SizedBox(height: 12),
-          _colors('Panel colour', _t.panelColor,
-              (c) => setState(() => _t = _t.copyWith(panelColor: c))),
+          _colors(
+            'Panel colour',
+            _t.panelColor,
+            (c) => setState(() => _t = _t.copyWith(panelColor: c)),
+          ),
           Text('Panel opacity: ${(_t.panelOpacity * 100).round()}%'),
           Slider(
             value: _t.panelOpacity,

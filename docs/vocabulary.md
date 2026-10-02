@@ -6,7 +6,7 @@ files, skill names, and commit messages.
 Maintained with the `/vocabulary` skill. Do not edit a definition in place without following
 its amend/supersede procedure.
 
-Last reviewed: 2026-10-02 (Bible Pic app terms)
+Last reviewed: 2026-10-02 (Bible Pic app terms, web surface)
 
 ## Repository and configuration
 
@@ -48,7 +48,8 @@ Last reviewed: 2026-10-02 (Bible Pic app terms)
 | --- | --- | --- |
 | **verse** | A Bible passage the owner entered: reference, text, optional translation label. | Never fetched from an online source. |
 | **topic** | A named tag linking verses and photos. | A verse or photo can have several. |
-| **canvas** | The area holding the photo, a plain margin colour, and the text box. | Text box geometry is stored as fractions of the canvas. |
+| **canvas** | The full-window area holding the photo, a plain margin colour, and the text box. | Text box geometry is stored as fractions of the canvas. On a window wider than 9:16 the canvas is the phone frame. |
+| **phone frame** | The centred 9:16 column the app is shown in on a window wider than a phone. | Keeps the canvas phone-shaped on desktop web (ADR 0008). |
 | **text box** | The movable, resizable panel that holds a verse on the canvas. | May extend past the photo's edge onto the margin. Width is stored; height fits the text. |
 | **theme** | A named style preset: font, size, text colour, alignment, panel colour, opacity, corner radius. | Excludes position. Applied: pinned verse's theme, then topic theme, then default. |
 | **pairing** | Choosing the photo shown with a verse: pinned photo, then topic-matched photo, then any photo. | Recently shown photos are skipped where enough exist. |

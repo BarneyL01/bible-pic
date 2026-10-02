@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 
@@ -7,10 +5,10 @@ import '../data/repository.dart';
 import '../db/database.dart';
 
 TextAlign alignmentFromName(String name) => switch (name) {
-      'left' => TextAlign.left,
-      'right' => TextAlign.right,
-      _ => TextAlign.center,
-    };
+  'left' => TextAlign.left,
+  'right' => TextAlign.right,
+  _ => TextAlign.center,
+};
 
 const kMinBoxW = 0.2;
 const kMaxBoxW = 1.2;
@@ -58,7 +56,6 @@ class VerseCanvas extends StatelessWidget {
     required this.text,
     required this.theme,
     required this.box,
-    this.photoFile,
     this.photoProvider,
     this.marginColor = const Color(0xFF111111),
     this.onBoxChanged,
@@ -68,7 +65,6 @@ class VerseCanvas extends StatelessWidget {
   final String text;
   final AppTheme theme;
   final BoxRect box;
-  final File? photoFile;
   final ImageProvider? photoProvider;
   final Color marginColor;
 
@@ -77,45 +73,46 @@ class VerseCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth;
-      final h = c.maxHeight;
-      final provider =
-          photoProvider ?? (photoFile != null ? FileImage(photoFile!) : null);
-      final boxWidth = box.w * w;
-      final textBox = _TextBox(
-        reference: reference,
-        text: text,
-        theme: theme,
-        maxHeight: h * 0.8,
-      );
-      return ClipRect(
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned.fill(child: ColoredBox(color: marginColor)),
-            if (provider != null)
-              Positioned.fill(
-                child: Image(image: provider, fit: BoxFit.contain),
-              ),
-            if (onBoxChanged == null)
-              Positioned(
-                left: box.x * w,
-                top: box.y * h,
-                width: boxWidth,
-                child: textBox,
-              )
-            else
-              Positioned(
-                left: box.x * w - _dotPad,
-                top: box.y * h - _dotPad,
-                width: boxWidth + 2 * _dotPad,
-                child: _editable(w, h, textBox),
-              ),
-          ],
-        ),
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth;
+        final h = c.maxHeight;
+        final provider = photoProvider;
+        final boxWidth = box.w * w;
+        final textBox = _TextBox(
+          reference: reference,
+          text: text,
+          theme: theme,
+          maxHeight: h * 0.8,
+        );
+        return ClipRect(
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned.fill(child: ColoredBox(color: marginColor)),
+              if (provider != null)
+                Positioned.fill(
+                  child: Image(image: provider, fit: BoxFit.contain),
+                ),
+              if (onBoxChanged == null)
+                Positioned(
+                  left: box.x * w,
+                  top: box.y * h,
+                  width: boxWidth,
+                  child: textBox,
+                )
+              else
+                Positioned(
+                  left: box.x * w - _dotPad,
+                  top: box.y * h - _dotPad,
+                  width: boxWidth + 2 * _dotPad,
+                  child: _editable(w, h, textBox),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _editable(double w, double h, Widget textBox) {
@@ -131,12 +128,17 @@ class VerseCanvas extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.all(_dotPad),
-          child: GestureDetector(
+          // Raw pointer events, not a pan gesture: a pan waits for ~18-36 px of
+          // movement before it starts and drops that distance, which made the
+          // box feel slow and the dots unresponsive.
+          child: Listener(
             behavior: HitTestBehavior.opaque,
-            onPanUpdate: (d) => onBoxChanged!(box.copyWith(
-              x: (box.x + d.delta.dx / w).clamp(kMinBoxX, 1.0),
-              y: (box.y + d.delta.dy / h).clamp(-0.1, 1.0),
-            )),
+            onPointerMove: (e) => onBoxChanged!(
+              box.copyWith(
+                x: (box.x + e.delta.dx / w).clamp(kMinBoxX, 1.0),
+                y: (box.y + e.delta.dy / h).clamp(-0.1, 1.0),
+              ),
+            ),
             child: DecoratedBox(
               position: DecorationPosition.foreground,
               decoration: BoxDecoration(
@@ -159,9 +161,10 @@ class VerseCanvas extends StatelessWidget {
             bottom: corner.top ? null : 0,
             width: 2 * _dotPad,
             height: 2 * _dotPad,
-            child: GestureDetector(
+            child: Listener(
               behavior: HitTestBehavior.opaque,
-              onPanUpdate: (d) => resize(fromLeft: corner.left, dx: d.delta.dx),
+              onPointerMove: (e) =>
+                  resize(fromLeft: corner.left, dx: e.delta.dx),
               child: Center(
                 child: Container(
                   width: 24,

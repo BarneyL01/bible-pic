@@ -48,12 +48,13 @@ class Themes extends Table {
   TextColumn get font => text().withDefault(const Constant('sans-serif'))();
   RealColumn get fontSize => real().withDefault(const Constant(26))();
   // Added in schema 2.
-  RealColumn get referenceFontSize =>
-      real().withDefault(const Constant(16))();
-  IntColumn get textColor => integer().withDefault(const Constant(0xFFFFFFFF))();
+  RealColumn get referenceFontSize => real().withDefault(const Constant(16))();
+  IntColumn get textColor =>
+      integer().withDefault(const Constant(0xFFFFFFFF))();
   // 'left' | 'center' | 'right'
   TextColumn get alignment => text().withDefault(const Constant('center'))();
-  IntColumn get panelColor => integer().withDefault(const Constant(0xFF000000))();
+  IntColumn get panelColor =>
+      integer().withDefault(const Constant(0xFF000000))();
   RealColumn get panelOpacity => real().withDefault(const Constant(0.5))();
   RealColumn get cornerRadius => real().withDefault(const Constant(12))();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
@@ -92,7 +93,16 @@ class AppMeta extends Table {
   tables: [Verses, Topics, Photos, Themes, VerseTopics, PhotoTopics, AppMeta],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'bible_pic'));
+  AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
+
+  static QueryExecutor _openConnection() => driftDatabase(
+    name: 'bible_pic',
+    // Web only: the files are copied into web/ (see tool/fetch_web_assets).
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
 
   static const dataSchemaVersion = 2;
 
@@ -101,26 +111,26 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.addColumn(themes, themes.referenceFontSize);
-            await (update(appMeta)).write(
-              const AppMetaCompanion(schemaVersion: Value(2)),
-            );
-          }
-        },
-        onCreate: (m) async {
-          await m.createAll();
-          await into(appMeta).insert(
-            AppMetaCompanion.insert(schemaVersion: dataSchemaVersion),
-          );
-          await into(themes).insert(
-            ThemesCompanion.insert(
-              id: 'default-theme',
-              name: 'Default',
-              isDefault: const Value(true),
-            ),
-          );
-        },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(themes, themes.referenceFontSize);
+        await (update(
+          appMeta,
+        )).write(const AppMetaCompanion(schemaVersion: Value(2)));
+      }
+    },
+    onCreate: (m) async {
+      await m.createAll();
+      await into(
+        appMeta,
+      ).insert(AppMetaCompanion.insert(schemaVersion: dataSchemaVersion));
+      await into(themes).insert(
+        ThemesCompanion.insert(
+          id: 'default-theme',
+          name: 'Default',
+          isDefault: const Value(true),
+        ),
       );
+    },
+  );
 }

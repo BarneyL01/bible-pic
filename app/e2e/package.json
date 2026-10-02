@@ -1,0 +1,7 @@
+{
+  "name": "bible-pic-e2e",
+  "private": true,
+  "description": "Browser tests for the web build, driven through Flutter's accessibility tree.",
+  "scripts": { "test": "node run.js" },
+  "dependencies": { "playwright-core": "^1.48.0", "pngjs": "^7.0.0" }
+}

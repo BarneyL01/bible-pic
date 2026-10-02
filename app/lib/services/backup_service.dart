@@ -1,14 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../data/repository.dart';
 import '../db/database.dart';
+import 'platform.dart';
 
 class BackupException implements Exception {
   BackupException(this.message);
@@ -39,27 +36,36 @@ class BackupService {
   final Repository repo;
   AppDatabase get db => repo.db;
 
-  /// Builds the backup zip and opens the share sheet.
+  /// Builds the backup zip and hands it to the user (share sheet on Android,
+  /// a download in the browser).
   Future<void> backUpNow({required String appVersion}) async {
+    final stamp = DateTime.now().toIso8601String().substring(0, 10);
+    await exportFile(
+      'bible-pic-backup-$stamp.zip',
+      await buildBackup(appVersion: appVersion),
+    );
+    await repo.markBackedUp();
+  }
+
+  /// The backup zip as bytes: `manifest.json`, `data.json`, `photos/`.
+  Future<Uint8List> buildBackup({required String appVersion}) async {
     final data = <String, dynamic>{
       'verses': [for (final r in await db.select(db.verses).get()) r.toJson()],
       'topics': [for (final r in await db.select(db.topics).get()) r.toJson()],
       'photos': [for (final r in await db.select(db.photos).get()) r.toJson()],
       'themes': [for (final r in await db.select(db.themes).get()) r.toJson()],
       'verseTopics': [
-        for (final r in await db.select(db.verseTopics).get()) r.toJson()
+        for (final r in await db.select(db.verseTopics).get()) r.toJson(),
       ],
       'photoTopics': [
-        for (final r in await db.select(db.photoTopics).get()) r.toJson()
+        for (final r in await db.select(db.photoTopics).get()) r.toJson(),
       ],
     };
     final manifest = {
       'appVersion': appVersion,
       'schemaVersion': AppDatabase.dataSchemaVersion,
       'date': DateTime.now().toIso8601String(),
-      'counts': {
-        for (final e in data.entries) e.key: (e.value as List).length,
-      },
+      'counts': {for (final e in data.entries) e.key: (e.value as List).length},
     };
 
     final archive = Archive();
@@ -70,30 +76,20 @@ class BackupService {
 
     addText('manifest.json', manifest);
     addText('data.json', data);
-    final dir = await repo.photoDir();
     for (final photo in await repo.allPhotos()) {
-      final f = File(p.join(dir.path, photo.path));
-      if (await f.exists()) {
-        archive.addFile(
-            ArchiveFile.bytes('photos/${photo.path}', await f.readAsBytes()));
+      final bytes = await repo.photoBytes(photo);
+      if (bytes != null) {
+        archive.addFile(ArchiveFile.bytes('photos/${photo.path}', bytes));
       }
     }
 
-    final out = await getTemporaryDirectory();
-    final stamp = DateTime.now().toIso8601String().substring(0, 10);
-    final file = File(p.join(out.path, 'bible-pic-backup-$stamp.zip'));
-    await file.writeAsBytes(ZipEncoder().encodeBytes(archive));
-    await repo.markBackedUp();
-    await SharePlus.instance.share(ShareParams(
-      files: [XFile(file.path)],
-      text: 'Bible Pic backup $stamp',
-    ));
+    return Uint8List.fromList(ZipEncoder().encodeBytes(archive));
   }
 
-  Future<RestoreSummary> restore(String zipPath, RestoreMode mode) async {
+  Future<RestoreSummary> restore(Uint8List zipBytes, RestoreMode mode) async {
     final Archive archive;
     try {
-      archive = ZipDecoder().decodeBytes(await File(zipPath).readAsBytes());
+      archive = ZipDecoder().decodeBytes(zipBytes);
     } catch (_) {
       throw BackupException('That file is not a valid backup zip.');
     }
@@ -108,32 +104,33 @@ class BackupService {
     final schema = manifest['schemaVersion'] as int? ?? 0;
     if (schema > AppDatabase.dataSchemaVersion) {
       throw BackupException(
-          'This backup comes from a newer version of the app (schema $schema). '
-          'Install the newer app version, then restore.');
+        'This backup comes from a newer version of the app (schema $schema). '
+        'Install the newer app version, then restore.',
+      );
     }
     final data = jsonDecode(utf8.decode(dataFile.readBytes()!)) as Map;
     List<Map<String, dynamic>> rows(String key) => [
-          for (final r in (data[key] as List? ?? const []))
-            Map<String, dynamic>.from(r as Map)
-        ];
+      for (final r in (data[key] as List? ?? const []))
+        Map<String, dynamic>.from(r as Map),
+    ];
 
     final verses = rows('verses').map(Verse.fromJson).toList();
     final topics = rows('topics').map(Topic.fromJson).toList();
     final photos = rows('photos').map(Photo.fromJson).toList();
     // Backups from schema 1 have no referenceFontSize; derive the old 60% size.
     var themes = rows('themes').map((r) {
-      r.putIfAbsent('referenceFontSize',
-          () => ((r['fontSize'] as num?) ?? 26).toDouble() * 0.6);
+      r.putIfAbsent(
+        'referenceFontSize',
+        () => ((r['fontSize'] as num?) ?? 26).toDouble() * 0.6,
+      );
       return AppTheme.fromJson(r);
     }).toList();
     final verseTopics = rows('verseTopics').map(VerseTopic.fromJson).toList();
     final photoTopics = rows('photoTopics').map(PhotoTopic.fromJson).toList();
 
-    final dir = await repo.photoDir();
     if (mode == RestoreMode.replace) {
-      // Replace wipes the photo folder, then the tables, then loads the backup.
-      await dir.delete(recursive: true);
-      await dir.create(recursive: true);
+      // Replace wipes the stored photos, then the tables, then loads the backup.
+      await repo.clearPhotoImages();
     } else {
       // Merge never adds a second default theme.
       themes = [for (final t in themes) t.copyWith(isDefault: false)];
@@ -149,11 +146,10 @@ class BackupService {
         missing++;
         continue;
       }
-      final target = File(p.join(dir.path, photo.path));
       if (mode == RestoreMode.merge && existingPhotoIds.contains(photo.id)) {
         continue;
       }
-      await target.writeAsBytes(f.readBytes()!);
+      await repo.storage.write(photo.path, f.readBytes()!);
     }
 
     final insert = mode == RestoreMode.replace
@@ -202,8 +198,9 @@ class BackupService {
 
   Future<Map<String, int>> _counts() async {
     Future<int> n(String table) async {
-      final row =
-          await db.customSelect('SELECT COUNT(*) AS c FROM $table').getSingle();
+      final row = await db
+          .customSelect('SELECT COUNT(*) AS c FROM $table')
+          .getSingle();
       return row.read<int>('c');
     }
 

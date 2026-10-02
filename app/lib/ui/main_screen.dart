@@ -44,7 +44,23 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        // A dark disc keeps the menu icon visible on bright photos and on the
+        // empty state's light background.
+        leading: Builder(
+          builder: (context) => Padding(
+            padding: const EdgeInsets.all(6),
+            child: IconButton.filled(
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black54,
+                foregroundColor: Colors.white,
+              ),
+              tooltip: 'Menu',
+              icon: const Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+        ),
       ),
       drawer: Drawer(
         child: SafeArea(
@@ -54,8 +70,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               _tile(Icons.favorite, 'Favourites', const FavouritesScreen()),
               const Divider(),
               _tile(Icons.menu_book, 'Verses', const VerseListScreen()),
-              _tile(Icons.photo_library, 'Photo library',
-                  const PhotoLibraryScreen()),
+              _tile(
+                Icons.photo_library,
+                'Photo library',
+                const PhotoLibraryScreen(),
+              ),
               _tile(Icons.palette, 'Themes', const ThemesScreen()),
               _tile(Icons.upload_file, 'Bulk import', const BulkImportScreen()),
               const Divider(),
@@ -79,36 +98,36 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Widget _tile(IconData icon, String title, Widget page) => ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        onTap: () {
-          Navigator.of(context).pop(); // close drawer
-          _open(page);
-        },
-      );
+    leading: Icon(icon),
+    title: Text(title),
+    onTap: () {
+      Navigator.of(context).pop(); // close drawer
+      _open(page);
+    },
+  );
 
   Widget _emptyState() => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('No verses yet.', style: TextStyle(fontSize: 18)),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => _open(const VerseListScreen()),
-                child: const Text('Add a verse'),
-              ),
-              TextButton(
-                onPressed: () => _open(const BulkImportScreen()),
-                child: const Text('Bulk import'),
-              ),
-              TextButton(
-                onPressed: () => _open(const BackupScreen()),
-                child: const Text('Restore from a backup'),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('No verses yet.', style: TextStyle(fontSize: 18)),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => _open(const VerseListScreen()),
+            child: const Text('Add a verse'),
           ),
-        ),
-      );
+          TextButton(
+            onPressed: () => _open(const BulkImportScreen()),
+            child: const Text('Bulk import'),
+          ),
+          TextButton(
+            onPressed: () => _open(const BackupScreen()),
+            child: const Text('Restore from a backup'),
+          ),
+        ],
+      ),
+    ),
+  );
 }

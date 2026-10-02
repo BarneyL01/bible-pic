@@ -1,14 +1,13 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:image/image.dart' as img;
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../db/database.dart';
+import 'photo_storage.dart';
 
 const _uuid = Uuid();
 String newId() => _uuid.v4();
@@ -32,40 +31,49 @@ class VerseWithTopics {
 }
 
 class Repository {
-  Repository(this.db);
+  Repository(this.db, this.storage);
   final AppDatabase db;
+  final PhotoStorage storage;
 
-  // ---------- Photo folder ----------
+  // ---------- Photo images ----------
 
-  Future<Directory> photoDir() async {
-    final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory(p.join(docs.path, 'photos'));
-    if (!await dir.exists()) await dir.create(recursive: true);
-    return dir;
+  final _images = <String, ImageProvider>{};
+
+  /// The decoded-image source for [photo], or null if its bytes are missing.
+  /// Providers are cached so repeated paints hit the image cache.
+  Future<ImageProvider?> photoImage(Photo photo) async {
+    final cached = _images[photo.path];
+    if (cached != null) return cached;
+    final bytes = await storage.read(photo.path);
+    if (bytes == null) return null;
+    return _images[photo.path] = MemoryImage(bytes);
   }
 
-  Future<File> photoFile(Photo photo) async =>
-      File(p.join((await photoDir()).path, photo.path));
+  Future<Uint8List?> photoBytes(Photo photo) => storage.read(photo.path);
+
+  void _forget(String name) {
+    final old = _images.remove(name);
+    old?.evict();
+  }
 
   // ---------- Streams ----------
 
-  Stream<List<Verse>> watchVerses() =>
-      (db.select(db.verses)..orderBy([(v) => OrderingTerm.asc(v.reference)]))
-          .watch();
-  Stream<List<Topic>> watchTopics() =>
-      (db.select(db.topics)..orderBy([(t) => OrderingTerm.asc(t.name)]))
-          .watch();
+  Stream<List<Verse>> watchVerses() => (db.select(
+    db.verses,
+  )..orderBy([(v) => OrderingTerm.asc(v.reference)])).watch();
+  Stream<List<Topic>> watchTopics() => (db.select(
+    db.topics,
+  )..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
   Stream<List<Photo>> watchPhotos() => db.select(db.photos).watch();
-  Stream<List<AppTheme>> watchThemes() =>
-      (db.select(db.themes)..orderBy([(t) => OrderingTerm.asc(t.name)]))
-          .watch();
+  Stream<List<AppTheme>> watchThemes() => (db.select(
+    db.themes,
+  )..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
   Stream<List<VerseTopic>> watchVerseTopics() =>
       db.select(db.verseTopics).watch();
   Stream<List<PhotoTopic>> watchPhotoTopics() =>
       db.select(db.photoTopics).watch();
-  Stream<Verse?> watchVerse(String id) => (db.select(db.verses)
-        ..where((v) => v.id.equals(id)))
-      .watchSingleOrNull();
+  Stream<Verse?> watchVerse(String id) =>
+      (db.select(db.verses)..where((v) => v.id.equals(id))).watchSingleOrNull();
   Stream<AppMetaRow> watchMeta() => db.select(db.appMeta).watchSingle();
 
   // ---------- Reads ----------
@@ -83,22 +91,21 @@ class Repository {
   Future<List<Verse>> versesForTopic(String topicId) {
     final q = db.select(db.verses).join([
       innerJoin(db.verseTopics, db.verseTopics.verseId.equalsExp(db.verses.id)),
-    ])
-      ..where(db.verseTopics.topicId.equals(topicId));
+    ])..where(db.verseTopics.topicId.equals(topicId));
     return q.map((r) => r.readTable(db.verses)).get();
   }
 
   Future<List<String>> topicIdsForVerse(String verseId) async {
-    final rows = await (db.select(db.verseTopics)
-          ..where((t) => t.verseId.equals(verseId)))
-        .get();
+    final rows = await (db.select(
+      db.verseTopics,
+    )..where((t) => t.verseId.equals(verseId))).get();
     return rows.map((r) => r.topicId).toList();
   }
 
   Future<List<String>> topicIdsForPhoto(String photoId) async {
-    final rows = await (db.select(db.photoTopics)
-          ..where((t) => t.photoId.equals(photoId)))
-        .get();
+    final rows = await (db.select(
+      db.photoTopics,
+    )..where((t) => t.photoId.equals(photoId))).get();
     return rows.map((r) => r.topicId).toList();
   }
 
@@ -110,31 +117,35 @@ class Repository {
 
   // ---------- Themes ----------
 
-  Future<AppTheme?> defaultTheme() => (db.select(db.themes)
-        ..where((t) => t.isDefault.equals(true))
-        ..limit(1))
-      .getSingleOrNull();
+  Future<AppTheme?> defaultTheme() =>
+      (db.select(db.themes)
+            ..where((t) => t.isDefault.equals(true))
+            ..limit(1))
+          .getSingleOrNull();
 
   /// Pinned verse's theme, then topic theme, then the default theme.
   Future<AppTheme> resolveTheme(Verse verse) async =>
       resolveThemeFor(verse, topicIds: await topicIdsForVerse(verse.id));
 
   /// As [resolveTheme], for a verse whose topics are not yet saved.
-  Future<AppTheme> resolveThemeFor(Verse verse,
-      {required List<String> topicIds}) async {
+  Future<AppTheme> resolveThemeFor(
+    Verse verse, {
+    required List<String> topicIds,
+  }) async {
     if (verse.themeId != null) {
-      final t = await (db.select(db.themes)
-            ..where((t) => t.id.equals(verse.themeId!)))
-          .getSingleOrNull();
+      final t = await (db.select(
+        db.themes,
+      )..where((t) => t.id.equals(verse.themeId!))).getSingleOrNull();
       if (t != null) return t;
     }
     if (topicIds.isNotEmpty) {
-      final q = db.select(db.themes).join([
-        innerJoin(db.topics, db.topics.themeId.equalsExp(db.themes.id)),
-      ])
-        ..where(db.topics.id.isIn(topicIds))
-        ..orderBy([OrderingTerm.asc(db.topics.name)])
-        ..limit(1);
+      final q =
+          db.select(db.themes).join([
+              innerJoin(db.topics, db.topics.themeId.equalsExp(db.themes.id)),
+            ])
+            ..where(db.topics.id.isIn(topicIds))
+            ..orderBy([OrderingTerm.asc(db.topics.name)])
+            ..limit(1);
       final row = await q.getSingleOrNull();
       if (row != null) return row.readTable(db.themes);
     }
@@ -155,84 +166,101 @@ class Repository {
   }
 
   Future<String> saveTheme(AppTheme t) async {
-    await db.into(db.themes).insertOnConflictUpdate(t);
+    await db.into(db.themes).insert(t, mode: InsertMode.insertOrReplace);
     return t.id;
   }
 
   Future<void> setDefaultTheme(String id) => db.transaction(() async {
-        await db.update(db.themes).write(
-            const ThemesCompanion(isDefault: Value(false)));
-        await (db.update(db.themes)..where((t) => t.id.equals(id)))
-            .write(const ThemesCompanion(isDefault: Value(true)));
-      });
+    await db
+        .update(db.themes)
+        .write(const ThemesCompanion(isDefault: Value(false)));
+    await (db.update(db.themes)..where((t) => t.id.equals(id))).write(
+      const ThemesCompanion(isDefault: Value(true)),
+    );
+  });
 
   Future<void> deleteTheme(String id) => db.transaction(() async {
-        final t = await (db.select(db.themes)..where((x) => x.id.equals(id)))
-            .getSingleOrNull();
-        if (t == null || t.isDefault) return;
-        await (db.update(db.verses)..where((v) => v.themeId.equals(id)))
-            .write(const VersesCompanion(themeId: Value(null)));
-        await (db.update(db.topics)..where((v) => v.themeId.equals(id)))
-            .write(const TopicsCompanion(themeId: Value(null)));
-        await (db.delete(db.themes)..where((x) => x.id.equals(id))).go();
-      });
+    final t = await (db.select(
+      db.themes,
+    )..where((x) => x.id.equals(id))).getSingleOrNull();
+    if (t == null || t.isDefault) return;
+    await (db.update(db.verses)..where((v) => v.themeId.equals(id))).write(
+      const VersesCompanion(themeId: Value(null)),
+    );
+    await (db.update(db.topics)..where((v) => v.themeId.equals(id))).write(
+      const TopicsCompanion(themeId: Value(null)),
+    );
+    await (db.delete(db.themes)..where((x) => x.id.equals(id))).go();
+  });
 
   // ---------- Topics ----------
 
   Future<String> topicIdForName(String name) async {
     final clean = name.trim();
-    final existing = await (db.select(db.topics)
-          ..where((t) => t.name.lower().equals(clean.toLowerCase())))
-        .getSingleOrNull();
+    final existing =
+        await (db.select(db.topics)
+              ..where((t) => t.name.lower().equals(clean.toLowerCase())))
+            .getSingleOrNull();
     if (existing != null) return existing.id;
     final id = newId();
-    await db.into(db.topics).insert(TopicsCompanion.insert(id: id, name: clean));
+    await db
+        .into(db.topics)
+        .insert(TopicsCompanion.insert(id: id, name: clean));
     return id;
   }
 
   Future<void> setTopicTheme(String topicId, String? themeId) =>
-      (db.update(db.topics)..where((t) => t.id.equals(topicId)))
-          .write(TopicsCompanion(themeId: Value(themeId)));
+      (db.update(db.topics)..where((t) => t.id.equals(topicId))).write(
+        TopicsCompanion(themeId: Value(themeId)),
+      );
 
   Future<void> renameTopic(String topicId, String name) =>
-      (db.update(db.topics)..where((t) => t.id.equals(topicId)))
-          .write(TopicsCompanion(name: Value(name.trim())));
+      (db.update(db.topics)..where((t) => t.id.equals(topicId))).write(
+        TopicsCompanion(name: Value(name.trim())),
+      );
 
   Future<void> deleteTopic(String topicId) => db.transaction(() async {
-        await (db.delete(db.verseTopics)..where((t) => t.topicId.equals(topicId)))
-            .go();
-        await (db.delete(db.photoTopics)..where((t) => t.topicId.equals(topicId)))
-            .go();
-        await (db.delete(db.topics)..where((t) => t.id.equals(topicId))).go();
-      });
+    await (db.delete(
+      db.verseTopics,
+    )..where((t) => t.topicId.equals(topicId))).go();
+    await (db.delete(
+      db.photoTopics,
+    )..where((t) => t.topicId.equals(topicId))).go();
+    await (db.delete(db.topics)..where((t) => t.id.equals(topicId))).go();
+  });
 
   // ---------- Verses ----------
 
-  Future<void> saveVerse(Verse verse, List<String> topicIds) =>
-      db.transaction(() async {
-        await db.into(db.verses).insertOnConflictUpdate(verse);
-        await (db.delete(db.verseTopics)
-              ..where((t) => t.verseId.equals(verse.id)))
-            .go();
-        for (final t in topicIds.toSet()) {
-          await db.into(db.verseTopics).insert(
-              VerseTopicsCompanion.insert(verseId: verse.id, topicId: t));
-        }
-      });
+  Future<void> saveVerse(Verse verse, List<String> topicIds) => db.transaction(
+    () async {
+      // insertOrReplace, not insertOnConflictUpdate: the latter skips null
+      // fields, so clearing a pin, theme or box override would not save.
+      await db.into(db.verses).insert(verse, mode: InsertMode.insertOrReplace);
+      await (db.delete(
+        db.verseTopics,
+      )..where((t) => t.verseId.equals(verse.id))).go();
+      for (final t in topicIds.toSet()) {
+        await db
+            .into(db.verseTopics)
+            .insert(VerseTopicsCompanion.insert(verseId: verse.id, topicId: t));
+      }
+    },
+  );
 
   Future<void> deleteVerse(String id) => db.transaction(() async {
-        await (db.delete(db.verseTopics)..where((t) => t.verseId.equals(id)))
-            .go();
-        await (db.delete(db.verses)..where((t) => t.id.equals(id))).go();
-      });
+    await (db.delete(db.verseTopics)..where((t) => t.verseId.equals(id))).go();
+    await (db.delete(db.verses)..where((t) => t.id.equals(id))).go();
+  });
 
   Future<void> setFavourite(String id, bool value) =>
-      (db.update(db.verses)..where((v) => v.id.equals(id)))
-          .write(VersesCompanion(favourite: Value(value)));
+      (db.update(db.verses)..where((v) => v.id.equals(id))).write(
+        VersesCompanion(favourite: Value(value)),
+      );
 
   Future<void> pinPhoto(String verseId, String? photoId) =>
-      (db.update(db.verses)..where((v) => v.id.equals(verseId)))
-          .write(VersesCompanion(pinnedPhotoId: Value(photoId)));
+      (db.update(db.verses)..where((v) => v.id.equals(verseId))).write(
+        VersesCompanion(pinnedPhotoId: Value(photoId)),
+      );
 
   /// Imports verses; returns how many were added.
   Future<int> importVerses(List<ImportedVerse> items) async {
@@ -240,17 +268,24 @@ class Repository {
     await db.transaction(() async {
       for (final item in items) {
         final id = newId();
-        await db.into(db.verses).insert(VersesCompanion.insert(
-              id: id,
-              reference: item.reference,
-              body: item.text,
-              translation: Value(item.translation),
-              favourite: Value(item.favourite),
-            ));
+        await db
+            .into(db.verses)
+            .insert(
+              VersesCompanion.insert(
+                id: id,
+                reference: item.reference,
+                body: item.text,
+                translation: Value(item.translation),
+                favourite: Value(item.favourite),
+              ),
+            );
         for (final name in item.topics) {
           final tid = await topicIdForName(name);
-          await db.into(db.verseTopics).insertOnConflictUpdate(
-              VerseTopicsCompanion.insert(verseId: id, topicId: tid));
+          await db
+              .into(db.verseTopics)
+              .insertOnConflictUpdate(
+                VerseTopicsCompanion.insert(verseId: id, topicId: tid),
+              );
         }
         added++;
       }
@@ -265,7 +300,7 @@ class Repository {
     final jpg = await compute(_resizeToJpeg, bytes);
     final id = newId();
     final name = '$id.jpg';
-    await File(p.join((await photoDir()).path, name)).writeAsBytes(jpg);
+    await storage.write(name, jpg);
     final photo = Photo(id: id, path: name, boxX: 0.1, boxY: 0.55, boxW: 0.8);
     await db.into(db.photos).insert(photo);
     return photo;
@@ -278,34 +313,39 @@ class Repository {
   /// Overwrites the stored image of [photo] with [bytes] (shrunk first).
   Future<void> replacePhotoImage(Photo photo, Uint8List bytes) async {
     final jpg = await shrinkImage(bytes);
-    await (await photoFile(photo)).writeAsBytes(jpg);
+    await storage.write(photo.path, jpg);
+    _forget(photo.path);
   }
 
   Future<void> savePhoto(Photo photo) =>
-      db.into(db.photos).insertOnConflictUpdate(photo);
+      db.into(db.photos).insert(photo, mode: InsertMode.insertOrReplace);
 
   Future<void> setPhotoTopics(String photoId, List<String> topicIds) =>
       db.transaction(() async {
-        await (db.delete(db.photoTopics)
-              ..where((t) => t.photoId.equals(photoId)))
-            .go();
+        await (db.delete(
+          db.photoTopics,
+        )..where((t) => t.photoId.equals(photoId))).go();
         for (final t in topicIds.toSet()) {
-          await db.into(db.photoTopics).insert(
-              PhotoTopicsCompanion.insert(photoId: photoId, topicId: t));
+          await db
+              .into(db.photoTopics)
+              .insert(
+                PhotoTopicsCompanion.insert(photoId: photoId, topicId: t),
+              );
         }
       });
 
   Future<void> deletePhoto(Photo photo) async {
     await db.transaction(() async {
-      await (db.update(db.verses)..where((v) => v.pinnedPhotoId.equals(photo.id)))
+      await (db.update(db.verses)
+            ..where((v) => v.pinnedPhotoId.equals(photo.id)))
           .write(const VersesCompanion(pinnedPhotoId: Value(null)));
-      await (db.delete(db.photoTopics)
-            ..where((t) => t.photoId.equals(photo.id)))
-          .go();
+      await (db.delete(
+        db.photoTopics,
+      )..where((t) => t.photoId.equals(photo.id))).go();
       await (db.delete(db.photos)..where((t) => t.id.equals(photo.id))).go();
     });
-    final f = await photoFile(photo);
-    if (await f.exists()) await f.delete();
+    await storage.delete(photo.path);
+    _forget(photo.path);
   }
 
   // ---------- Photo pairing ----------
@@ -326,9 +366,10 @@ class Repository {
     if (topicIds.isNotEmpty) {
       final q = db.select(db.photos).join([
         innerJoin(
-            db.photoTopics, db.photoTopics.photoId.equalsExp(db.photos.id)),
-      ])
-        ..where(db.photoTopics.topicId.isIn(topicIds));
+          db.photoTopics,
+          db.photoTopics.photoId.equalsExp(db.photos.id),
+        ),
+      ])..where(db.photoTopics.topicId.isIn(topicIds));
       final rows = await q.map((r) => r.readTable(db.photos)).get();
       final unique = {for (final ph in rows) ph.id: ph}.values.toList();
       final pick = _pick(unique, recent, rng);
@@ -347,8 +388,17 @@ class Repository {
 
   // ---------- Meta ----------
 
-  Future<void> markBackedUp() => (db.update(db.appMeta)).write(
-      AppMetaCompanion(lastBackup: Value(DateTime.now())));
+  /// Removes every stored photo image (used before a Replace restore).
+  Future<void> clearPhotoImages() async {
+    await storage.clear();
+    for (final k in _images.keys.toList()) {
+      _forget(k);
+    }
+  }
+
+  Future<void> markBackedUp() => (db.update(
+    db.appMeta,
+  )).write(AppMetaCompanion(lastBackup: Value(DateTime.now())));
 }
 
 class ImportedVerse {

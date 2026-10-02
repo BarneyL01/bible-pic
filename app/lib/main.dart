@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 
 import 'data/providers.dart';
+import 'services/platform.dart';
 import 'services/widget_sync.dart';
 import 'ui/main_screen.dart';
 import 'ui/viewer_page.dart';
@@ -32,8 +33,10 @@ class _BiblePicAppState extends ConsumerState<BiblePicApp> {
   @override
   void initState() {
     super.initState();
-    _clicks = HomeWidget.widgetClicked.listen(_openFromWidget);
-    HomeWidget.initiallyLaunchedFromHomeWidget().then(_openFromWidget);
+    if (kHomeWidgetSupported) {
+      _clicks = HomeWidget.widgetClicked.listen(_openFromWidget);
+      HomeWidget.initiallyLaunchedFromHomeWidget().then(_openFromWidget);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleSync());
   }
 
@@ -62,16 +65,18 @@ class _BiblePicAppState extends ConsumerState<BiblePicApp> {
     final repo = ref.read(repositoryProvider);
     final verses = await repo.allVerses();
     if (!verses.any((v) => v.id == id)) return;
-    navigatorKey.currentState?.push(MaterialPageRoute<void>(
-      builder: (_) => Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
+    navigatorKey.currentState?.push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            foregroundColor: Colors.white,
+          ),
+          body: ViewerPage(pool: verses, infinite: true, startVerseId: id),
         ),
-        body: ViewerPage(pool: verses, infinite: true, startVerseId: id),
       ),
-    ));
+    );
   }
 
   @override
@@ -87,10 +92,43 @@ class _BiblePicAppState extends ConsumerState<BiblePicApp> {
       navigatorKey: navigatorKey,
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       darkTheme: ThemeData(
-          colorSchemeSeed: Colors.indigo,
-          brightness: Brightness.dark,
-          useMaterial3: true),
+        colorSchemeSeed: Colors.indigo,
+        brightness: Brightness.dark,
+        useMaterial3: true,
+      ),
+      builder: (context, child) => PhoneFrame(child: child!),
       home: const MainScreen(),
+    );
+  }
+}
+
+/// On a window wider than a phone (a desktop browser), shows the app in a
+/// centred portrait frame so the canvas keeps a phone's shape and positions
+/// set here match the phone. On a phone it does nothing.
+class PhoneFrame extends StatelessWidget {
+  const PhoneFrame({super.key, required this.child});
+  final Widget child;
+
+  static const maxAspect = 0.5625; // 9:16
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final size = media.size;
+    if (size.width / size.height <= maxAspect) return child;
+    final frame = Size(size.height * maxAspect, size.height);
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: SizedBox(
+          width: frame.width,
+          height: frame.height,
+          child: MediaQuery(
+            data: media.copyWith(size: frame),
+            child: ClipRect(child: child),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -39,7 +39,16 @@
       "WebFetch(domain:pub.dev)",
       "WebFetch(domain:developer.android.com)",
       "WebFetch(domain:code.claude.com)",
-      "WebFetch(domain:docs.claude.com)"
+      "WebFetch(domain:docs.claude.com)",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter build web:*)",
+      "Bash(dart format:*)",
+      "Bash(dart run:*)",
+      "Bash(npm install:*)",
+      "Bash(node run.js:*)",
+      "Bash(bash app/tool/cloud_setup.sh:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",

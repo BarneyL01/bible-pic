@@ -1,0 +1,79 @@
+# Checks the Bible Pic app and publishes its web build to GitHub Pages.
+# Pages must be set to "GitHub Actions" as its source in the repository settings.
+name: Web build and deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/web.yml']
+  pull_request:
+    paths: ['app/**', '.github/workflows/web.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      BASE_HREF: /${{ github.event.repository.name }}/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: dart run tool/fetch_web_assets.dart
+
+      - run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: flutter analyze
+      - run: flutter test
+
+      - run: flutter build web --release --no-web-resources-cdn --base-href "$BASE_HREF"
+
+      # Drives the built site in headless Chromium. Reported but does not block
+      # publishing, so a browser hiccup on the runner cannot take the site down.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Browser tests
+        continue-on-error: true
+        working-directory: app/e2e
+        env:
+          E2E_BASE: ${{ env.BASE_HREF }}
+        run: |
+          npm install
+          npx playwright-core install --with-deps chromium
+          node run.js
+
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: app/build/web
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

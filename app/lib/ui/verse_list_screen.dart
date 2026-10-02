@@ -14,21 +14,25 @@ class VerseListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Verses')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => const VerseEditorScreen())),
+        tooltip: 'Add verse',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const VerseEditorScreen()),
+        ),
         child: const Icon(Icons.add),
       ),
       body: async.hasError && verses.isEmpty
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('Could not load verses:\n${async.error}',
-                    textAlign: TextAlign.center),
+                child: Text(
+                  'Could not load verses:\n${async.error}',
+                  textAlign: TextAlign.center,
+                ),
               ),
             )
           : async.isLoading && verses.isEmpty
-              ? const Center(child: CircularProgressIndicator())
-              : verses.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : verses.isEmpty
           ? const Center(child: Text('No verses yet. Tap + to add one.'))
           : ListView.builder(
               itemCount: verses.length,
@@ -36,13 +40,19 @@ class VerseListScreen extends ConsumerWidget {
                 final v = verses[i];
                 return ListTile(
                   title: Text(v.reference),
-                  subtitle:
-                      Text(v.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    v.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   trailing: v.favourite
                       ? const Icon(Icons.favorite, color: Colors.red)
                       : null,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => VerseEditorScreen(verseId: v.id))),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => VerseEditorScreen(verseId: v.id),
+                    ),
+                  ),
                 );
               },
             ),

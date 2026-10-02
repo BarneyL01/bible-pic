@@ -23,18 +23,20 @@ class _CropScreenState extends State<CropScreen> {
   Future<void> _crop() async {
     setState(() => _busy = true);
     try {
-      final boundary = _frameKey.currentContext!.findRenderObject()
-          as RenderRepaintBoundary;
+      final boundary =
+          _frameKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(
-          pixelRatio: _outputWidth / boundary.size.width);
+        pixelRatio: _outputWidth / boundary.size.width,
+      );
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       if (!mounted) return;
       Navigator.pop(context, data!.buffer.asUint8List());
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Crop failed: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Crop failed: $e')));
     }
   }
 
@@ -85,9 +87,11 @@ class _CropScreenState extends State<CropScreen> {
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                                backgroundColor: Colors.white),
-                            onPressed:
-                                _busy ? null : () => Navigator.pop(context),
+                              backgroundColor: Colors.white,
+                            ),
+                            onPressed: _busy
+                                ? null
+                                : () => Navigator.pop(context),
                             child: const Text('Cancel'),
                           ),
                         ),
@@ -95,11 +99,12 @@ class _CropScreenState extends State<CropScreen> {
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                                backgroundColor: Colors.white),
+                              backgroundColor: Colors.white,
+                            ),
                             onPressed: _busy
                                 ? null
                                 : () => Navigator.pop(context, widget.bytes),
-                            child: const Text('Whole photo'),
+                            child: const Text('No crop'),
                           ),
                         ),
                         const SizedBox(width: 8),

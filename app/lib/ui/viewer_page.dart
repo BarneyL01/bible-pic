@@ -41,26 +41,28 @@ class _ViewerPageState extends ConsumerState<ViewerPage> {
   Verse? _previous;
 
   Future<_Item> _itemAt(int index) => _items.putIfAbsent(index, () async {
-        final repo = ref.read(repositoryProvider);
-        Verse verse;
-        if (!widget.infinite) {
-          verse = widget.pool[index];
-        } else if (index == 0 && widget.startVerseId != null) {
-          verse = widget.pool.firstWhere((v) => v.id == widget.startVerseId,
-              orElse: _randomVerse);
-        } else {
-          verse = _randomVerse();
-        }
-        _previous = verse;
-        // Re-read so a pin or edit made since the pool snapshot is honoured.
-        verse = await repo.verseById(verse.id) ?? verse;
-        final photo = await repo.pairPhoto(verse, recent: _recentPhotos);
-        if (photo != null) {
-          _recentPhotos.add(photo.id);
-          if (_recentPhotos.length > _recentWindow) _recentPhotos.removeAt(0);
-        }
-        return _Item(verse, photo);
-      });
+    final repo = ref.read(repositoryProvider);
+    Verse verse;
+    if (!widget.infinite) {
+      verse = widget.pool[index];
+    } else if (index == 0 && widget.startVerseId != null) {
+      verse = widget.pool.firstWhere(
+        (v) => v.id == widget.startVerseId,
+        orElse: _randomVerse,
+      );
+    } else {
+      verse = _randomVerse();
+    }
+    _previous = verse;
+    // Re-read so a pin or edit made since the pool snapshot is honoured.
+    verse = await repo.verseById(verse.id) ?? verse;
+    final photo = await repo.pairPhoto(verse, recent: _recentPhotos);
+    if (photo != null) {
+      _recentPhotos.add(photo.id);
+      if (_recentPhotos.length > _recentWindow) _recentPhotos.removeAt(0);
+    }
+    return _Item(verse, photo);
+  });
 
   Verse _randomVerse() {
     final pool = widget.pool;
@@ -91,8 +93,10 @@ class _ViewerPageState extends ConsumerState<ViewerPage> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('Could not load this verse:\n${snap.error}',
-                    textAlign: TextAlign.center),
+                child: Text(
+                  'Could not load this verse:\n${snap.error}',
+                  textAlign: TextAlign.center,
+                ),
               ),
             );
           }

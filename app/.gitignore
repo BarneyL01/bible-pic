@@ -16,3 +16,10 @@ android/**/*.jks
 android/**/*.keystore
 android/.gradle/
 android/app/google-services.json
+
+# Web build output, drift web assets (downloaded by tool/fetch_web_assets.dart), e2e scratch
+web/sqlite3.wasm
+web/drift_worker.js
+e2e/node_modules/
+e2e/tmp/
+pubspec.lock

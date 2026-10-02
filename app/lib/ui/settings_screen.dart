@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/providers.dart';
 import '../db/database.dart';
 import '../services/backup_service.dart';
+import '../services/platform.dart';
 import '../services/widget_sync.dart';
 import 'themes_screen.dart';
 
@@ -17,8 +18,9 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themes = ref.watch(themesProvider).value ?? const <AppTheme>[];
     final defaultId = themes.where((t) => t.isDefault).firstOrNull?.id;
-    void open(Widget page) => Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => page));
+    void open(Widget page) => Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => page));
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -28,16 +30,18 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Backup & new phone'),
             onTap: () => open(const BackupScreen()),
           ),
-          ListTile(
-            leading: const Icon(Icons.widgets),
-            title: const Text('Widget settings'),
-            onTap: () => open(const WidgetSettingsScreen()),
-          ),
-          ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('Widget setup guide'),
-            onTap: () => open(const WidgetGuideScreen()),
-          ),
+          if (kHomeWidgetSupported) ...[
+            ListTile(
+              leading: const Icon(Icons.widgets),
+              title: const Text('Widget settings'),
+              onTap: () => open(const WidgetSettingsScreen()),
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('Widget setup guide'),
+              onTap: () => open(const WidgetGuideScreen()),
+            ),
+          ],
           if (themes.isNotEmpty)
             ListTile(
               leading: const Icon(Icons.palette),
@@ -128,8 +132,9 @@ class _WidgetSettingsScreenState extends ConsumerState<WidgetSettingsScreen> {
     final photos = ref.watch(photosProvider).value ?? const <Photo>[];
     if (c == null) {
       return Scaffold(
-          appBar: AppBar(title: const Text('Widget settings')),
-          body: const Center(child: CircularProgressIndicator()));
+        appBar: AppBar(title: const Text('Widget settings')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Widget settings')),
@@ -139,10 +144,13 @@ class _WidgetSettingsScreenState extends ConsumerState<WidgetSettingsScreen> {
             groupValue: c.mode,
             onChanged: (m) {
               if (m != null) {
-                _apply(WidgetConfig(
+                _apply(
+                  WidgetConfig(
                     mode: m,
                     fixedVerseId: c.fixedVerseId,
-                    fixedPhotoId: c.fixedPhotoId));
+                    fixedPhotoId: c.fixedPhotoId,
+                  ),
+                );
               }
             },
             child: const Column(
@@ -165,30 +173,48 @@ class _WidgetSettingsScreenState extends ConsumerState<WidgetSettingsScreen> {
                   ? c.fixedVerseId
                   : null,
               decoration: const InputDecoration(
-                  labelText: 'Verse', contentPadding: EdgeInsets.all(16)),
+                labelText: 'Verse',
+                contentPadding: EdgeInsets.all(16),
+              ),
               isExpanded: true,
               items: [
                 for (final v in verses)
                   DropdownMenuItem(value: v.id, child: Text(v.reference)),
               ],
-              onChanged: (id) => _apply(WidgetConfig(
-                  mode: c.mode, fixedVerseId: id, fixedPhotoId: c.fixedPhotoId)),
+              onChanged: (id) => _apply(
+                WidgetConfig(
+                  mode: c.mode,
+                  fixedVerseId: id,
+                  fixedPhotoId: c.fixedPhotoId,
+                ),
+              ),
             ),
             DropdownButtonFormField<String?>(
               initialValue: photos.any((p) => p.id == c.fixedPhotoId)
                   ? c.fixedPhotoId
                   : null,
               decoration: const InputDecoration(
-                  labelText: 'Photo', contentPadding: EdgeInsets.all(16)),
+                labelText: 'Photo',
+                contentPadding: EdgeInsets.all(16),
+              ),
               items: [
                 const DropdownMenuItem(
-                    value: null, child: Text('Automatic pairing')),
+                  value: null,
+                  child: Text('Automatic pairing'),
+                ),
                 for (var i = 0; i < photos.length; i++)
                   DropdownMenuItem(
-                      value: photos[i].id, child: Text('Photo ${i + 1}')),
+                    value: photos[i].id,
+                    child: Text('Photo ${i + 1}'),
+                  ),
               ],
-              onChanged: (id) => _apply(WidgetConfig(
-                  mode: c.mode, fixedVerseId: c.fixedVerseId, fixedPhotoId: id)),
+              onChanged: (id) => _apply(
+                WidgetConfig(
+                  mode: c.mode,
+                  fixedVerseId: c.fixedVerseId,
+                  fixedPhotoId: id,
+                ),
+              ),
             ),
           ],
         ],
@@ -247,34 +273,38 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
         builder: (_) => AlertDialog(
           title: const Text('Replace everything?'),
           content: const Text(
-              'All verses, topics, photos and themes on this phone will be '
-              'deleted and replaced by the backup. This cannot be undone.'),
+            'All verses, topics, photos and themes on this phone will be '
+            'deleted and replaced by the backup. This cannot be undone.',
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Replace')),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Replace'),
+            ),
           ],
         ),
       );
       if (ok != true) return;
     }
     final file = await FilePicker.pickFile(
-        type: FileType.custom, allowedExtensions: ['zip']);
-    final path = file?.path;
-    if (path == null || !mounted) return;
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+    );
+    if (file == null || !mounted) return;
     setState(() => _busy = true);
     try {
-      final s = await _service.restore(path, mode);
+      final s = await _service.restore(await file.readAsBytes(), mode);
       if (!mounted) return;
       await showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text(mode == RestoreMode.replace
-              ? 'Restore complete'
-              : 'Merge complete'),
+          title: Text(
+            mode == RestoreMode.replace ? 'Restore complete' : 'Merge complete',
+          ),
           content: Text(
             '${mode == RestoreMode.replace ? 'Loaded' : 'Added'}:\n'
             '- ${s.verses} verses\n- ${s.topics} topics\n'
@@ -283,8 +313,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
           ],
         ),
       );

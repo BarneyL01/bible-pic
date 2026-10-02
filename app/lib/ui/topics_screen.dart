@@ -16,6 +16,7 @@ class TopicsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Topics')),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Add topic',
         onPressed: () async {
           final name = await _askName(context, '');
           if (name != null && name.trim().isNotEmpty) {
@@ -39,20 +40,22 @@ class TopicsScreen extends ConsumerWidget {
                     onTap: () async {
                       final verses = await repo.versesForTopic(t.id);
                       if (!context.mounted) return;
-                      Navigator.of(context).push(MaterialPageRoute<void>(
-                        builder: (_) => Scaffold(
-                          extendBodyBehindAppBar: true,
-                          appBar: AppBar(
-                            title: Text(t.name),
-                            backgroundColor: Colors.black45,
-                            foregroundColor: Colors.white,
-                          ),
-                          body: ViewerPage(
-                            pool: verses,
-                            emptyMessage: 'No verses in this topic yet.',
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => Scaffold(
+                            extendBodyBehindAppBar: true,
+                            appBar: AppBar(
+                              title: Text(t.name),
+                              backgroundColor: Colors.black45,
+                              foregroundColor: Colors.white,
+                            ),
+                            body: ViewerPage(
+                              pool: verses,
+                              emptyMessage: 'No verses in this topic yet.',
+                            ),
                           ),
                         ),
-                      ));
+                      );
                     },
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) async {
@@ -69,8 +72,7 @@ class TopicsScreen extends ConsumerWidget {
                               title: const Text('Topic theme'),
                               children: [
                                 SimpleDialogOption(
-                                  onPressed: () =>
-                                      Navigator.pop(context, ''),
+                                  onPressed: () => Navigator.pop(context, ''),
                                   child: const Text('Use default theme'),
                                 ),
                                 for (final th in themes)
@@ -84,7 +86,9 @@ class TopicsScreen extends ConsumerWidget {
                           );
                           if (picked != null) {
                             await repo.setTopicTheme(
-                                t.id, picked.isEmpty ? null : picked);
+                              t.id,
+                              picked.isEmpty ? null : picked,
+                            );
                           }
                         } else if (v == 'delete') {
                           await repo.deleteTopic(t.id);
@@ -112,11 +116,13 @@ Future<String?> _askName(BuildContext context, String initial) {
       content: TextField(controller: controller, autofocus: true),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel')),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Save')),
+          onPressed: () => Navigator.pop(context, controller.text),
+          child: const Text('Save'),
+        ),
       ],
     ),
   );

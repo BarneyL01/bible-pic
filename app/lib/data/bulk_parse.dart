@@ -10,7 +10,8 @@ import 'repository.dart';
 /// trailing `(NIV)`-style label on the reference line is the translation.
 List<ImportedVerse> parseVerseText(String input) {
   final result = <ImportedVerse>[];
-  for (final block in input.replaceAll('\r\n', '\n').split(RegExp(r'\n\s*\n'))) {
+  for (final block
+      in input.replaceAll('\r\n', '\n').split(RegExp(r'\n\s*\n'))) {
     final lines = block
         .split('\n')
         .map((l) => l.trim())
@@ -19,7 +20,13 @@ List<ImportedVerse> parseVerseText(String input) {
     if (lines.length < 2) continue;
     var topics = <String>[];
     if (lines.last.startsWith('#') && lines.length >= 3) {
-      topics = lines.removeLast().substring(1).split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      topics = lines
+          .removeLast()
+          .substring(1)
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
     }
     var reference = lines.first;
     String? translation;
@@ -28,12 +35,14 @@ List<ImportedVerse> parseVerseText(String input) {
       reference = m.group(1)!;
       translation = m.group(2);
     }
-    result.add(ImportedVerse(
-      reference: reference,
-      text: lines.skip(1).join(' '),
-      translation: translation,
-      topics: topics,
-    ));
+    result.add(
+      ImportedVerse(
+        reference: reference,
+        text: lines.skip(1).join(' '),
+        translation: translation,
+        topics: topics,
+      ),
+    );
   }
   return result;
 }
@@ -55,7 +64,7 @@ List<ImportedVerse> parseVerseJson(String input) {
           text: item['text'] as String,
           translation: item['translation'] as String?,
           topics: [
-            for (final t in (item['topics'] as List? ?? const [])) t.toString()
+            for (final t in (item['topics'] as List? ?? const [])) t.toString(),
           ],
           favourite: item['favourite'] == true,
         )
