@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
-import '../data/repository.dart';
 import '../db/database.dart';
 import '../services/backup_service.dart';
 import '../services/widget_sync.dart';

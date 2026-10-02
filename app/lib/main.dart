@@ -74,12 +74,12 @@ class _BiblePicAppState extends ConsumerState<BiblePicApp> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(versesProvider, (_, __) => _scheduleSync());
-    ref.listen(photosProvider, (_, __) => _scheduleSync());
-    ref.listen(themesProvider, (_, __) => _scheduleSync());
-    ref.listen(topicsProvider, (_, __) => _scheduleSync());
-    ref.listen(verseTopicsProvider, (_, __) => _scheduleSync());
-    ref.listen(photoTopicsProvider, (_, __) => _scheduleSync());
+    ref.listen(versesProvider, (_, _) => _scheduleSync());
+    ref.listen(photosProvider, (_, _) => _scheduleSync());
+    ref.listen(themesProvider, (_, _) => _scheduleSync());
+    ref.listen(topicsProvider, (_, _) => _scheduleSync());
+    ref.listen(verseTopicsProvider, (_, _) => _scheduleSync());
+    ref.listen(photoTopicsProvider, (_, _) => _scheduleSync());
     return MaterialApp(
       title: 'Bible Pic',
       navigatorKey: navigatorKey,

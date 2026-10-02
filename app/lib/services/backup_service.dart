@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart';
@@ -105,14 +104,14 @@ class BackupService {
     if (manifestFile == null || dataFile == null) {
       throw BackupException('The zip is missing manifest.json or data.json.');
     }
-    final manifest = jsonDecode(utf8.decode(manifestFile.readBytes())) as Map;
+    final manifest = jsonDecode(utf8.decode(manifestFile.readBytes()!)) as Map;
     final schema = manifest['schemaVersion'] as int? ?? 0;
     if (schema > AppDatabase.dataSchemaVersion) {
       throw BackupException(
           'This backup comes from a newer version of the app (schema $schema). '
           'Install the newer app version, then restore.');
     }
-    final data = jsonDecode(utf8.decode(dataFile.readBytes())) as Map;
+    final data = jsonDecode(utf8.decode(dataFile.readBytes()!)) as Map;
     List<Map<String, dynamic>> rows(String key) => [
           for (final r in (data[key] as List? ?? const []))
             Map<String, dynamic>.from(r as Map)
@@ -149,7 +148,7 @@ class BackupService {
       if (mode == RestoreMode.merge && existingPhotoIds.contains(photo.id)) {
         continue;
       }
-      await target.writeAsBytes(f.readBytes());
+      await target.writeAsBytes(f.readBytes()!);
     }
 
     final insert = mode == RestoreMode.replace
