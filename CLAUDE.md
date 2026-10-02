@@ -2,10 +2,11 @@
 
 Reusable Claude Code configuration for Flutter applications targeting **web** and **Android**.
 
-This repository ships agent configuration, not application code. Its output is copied into
-Flutter app repositories via the `/adopt-base` skill. `README.md` has the file layout;
-`docs/vocabulary.md` has the terms; `docs/model-baseline.md` says which model generation the
-configuration is tuned for.
+This repository ships agent configuration, and since ADR 0006 also holds one Flutter app,
+Bible Pic, under `app/`. The configuration is copied into other Flutter app repositories via
+the `/adopt-base` skill. `README.md` has the file layout; `docs/vocabulary.md` has the terms;
+`docs/model-baseline.md` says which model generation the configuration is tuned for. Work
+under `app/` follows `app/CLAUDE.md` as well as this file.
 
 <!-- Provenance tags in this file are HTML comments: Claude Code strips them before injection,
      so they cost no context. Format and categories: rubric criterion M4. -->
@@ -16,13 +17,15 @@ configuration is tuned for.
 
 | Belongs in this repo | Does not belong here |
 | --- | --- |
-| Base instructions (`templates/flutter-app/CLAUDE.md`) | `lib/`, `pubspec.yaml`, `android/`, `web/` |
-| Skills under `.claude/skills/` | Application widgets, tests, or assets |
-| Shared permission defaults (`.claude/settings.json`) | App secrets, keystores, signing config |
-| Vocabulary, decisions, baseline under `docs/` | Per-app build output |
+| Base instructions (`templates/flutter-app/CLAUDE.md`) | Flutter code outside `app/` |
+| Skills under `.claude/skills/` | App secrets, keystores, signing config |
+| Shared permission defaults (`.claude/settings.json`) | Per-app build output |
+| Vocabulary, decisions, baseline under `docs/` | |
 | Eval cases under `evals/` | |
+| The Bible Pic app under `app/` (ADR 0006) | |
 
-If a change only makes sense for one app, it belongs in that app's repo, not here.
+The portable files (`templates/`, `.claude/skills/`) never mention Bible Pic. If a change only
+makes sense for one app, it belongs in `app/`; a second app belongs in its own repo.
 
 ## Working rules
 
@@ -79,7 +82,8 @@ a correction.
      check each claim against a tool result; the migration notes say keep this on 5.1 -->
 Report only work you can point to a tool result for. The Flutter SDK is **not** installed in
 Claude Code cloud containers, so `flutter` and `dart` commands fail there; in a cloud session
-a Flutter check is **unverified**, and the summary says so.
+a Flutter check is **unverified**, and the summary says so. The first build of `app/` was
+written in such a session: it has never been analysed, built, or run.
 
 ## Commands
 
@@ -89,5 +93,6 @@ a Flutter check is **unverified**, and the summary says so.
 | Recalibrate for a new model | `/model-upgrade [model-id]` |
 | Run the eval suite | `claude plugin eval . --no-publish` |
 | Record an agreed term | `/vocabulary` |
-| Install the base into an app repo | `/adopt-base` |
+| Install the base into another app repo | `/adopt-base` |
+| Set up and run Bible Pic | See `app/CLAUDE.md`, "First-time setup" |
 | Resolve TBD stack choices | `/flutter-stack-decide` |

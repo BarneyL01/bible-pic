@@ -6,13 +6,13 @@ files, skill names, and commit messages.
 Maintained with the `/vocabulary` skill. Do not edit a definition in place without following
 its amend/supersede procedure.
 
-Last reviewed: 2026-09-15 (second pass: provenance and recalibration terms)
+Last reviewed: 2026-10-02 (Bible Pic app terms)
 
 ## Repository and configuration
 
 | Term | Definition | Notes |
 | --- | --- | --- |
-| **agent-base** | This repository: reusable Claude Code configuration for Flutter apps, containing no application code. | Not a Flutter project and not a dependency. Established by ADR 0001. |
+| **agent-base** | The portable configuration in this repository (`templates/`, `.claude/skills/`, `docs/`, `evals/`): reusable Claude Code configuration for Flutter apps. | Not a dependency. Established by ADR 0001; the repository also holds the Bible Pic app in `app/` (ADR 0006). |
 | **the base** | Short form of *agent-base* when the repository is already the subject. | Use the full name in commit messages and file headers. |
 | **app repo** | A separate repository containing one Flutter application, which has adopted the base. | Owns its configuration after adoption; the base does not reach into it. |
 | **adoption** | The one-time act of copying `templates/flutter-app/` into an app repo. | Performed by `/adopt-base`. An *update* is a later re-run against an app that already adopted. |
@@ -41,6 +41,20 @@ Last reviewed: 2026-09-15 (second pass: provenance and recalibration terms)
 | **surface** | A build target the app ships to: `web` or `android`. | Used instead of "platform" to avoid collision with Flutter's own platform channels. |
 | **primary surface** | The surface whose constraints win when web and Android requirements conflict. | Declared per app during adoption; not assumed. |
 | **stack choice** | A decision about which library or pattern the app uses for one concern (state, routing, networking, testing, CI). | Each one is either decided in an ADR or marked TBD. There is no third state. |
+
+## Bible Pic app
+
+| Term | Definition | Notes |
+| --- | --- | --- |
+| **verse** | A Bible passage the owner entered: reference, text, optional translation label. | Never fetched from an online source. |
+| **topic** | A named tag linking verses and photos. | A verse or photo can have several. |
+| **canvas** | The area holding the photo, a plain margin colour, and the text box. | Text box geometry is stored as fractions of the canvas. |
+| **text box** | The movable, resizable panel that holds a verse on the canvas. | May extend past the photo's edge onto the margin. Width is stored; height fits the text. |
+| **theme** | A named style preset: font, size, text colour, alignment, panel colour, opacity, corner radius. | Excludes position. Applied: pinned verse's theme, then topic theme, then default. |
+| **pairing** | Choosing the photo shown with a verse: pinned photo, then topic-matched photo, then any photo. | Recently shown photos are skipped where enough exist. |
+| **pinned photo** | A photo fixed to one verse. | Set by the lock button or the verse editor. |
+| **verse of the day** | The verse chosen by a random draw seeded by the date. | Same all day; changes at midnight. Used by the widget, not the main screen. |
+| **backup file** | The zip holding `manifest.json`, `data.json`, and `photos/`. | Restore is *Replace* or *Merge*. |
 
 ## Retired
 

@@ -1,6 +1,6 @@
 # 0001. agent-base is a reusable configuration repository, not a Flutter app
 
-- **Status:** Accepted
+- **Status:** Superseded by [0006](0006-bible-pic-app-lives-in-app-directory.md)
 - **Date:** 2026-09-15
 - **Deciders:** repository owner
 

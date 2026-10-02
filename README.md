@@ -1,9 +1,11 @@
 # agent-base
 
-Reusable Claude Code configuration for Flutter applications targeting **web** and **Android**.
+Reusable Claude Code configuration for Flutter applications targeting **web** and **Android**,
+plus the Android-only Bible Pic app that was built from it.
 
-This repository holds agent configuration only — no Flutter code. Application repositories
-adopt it by copying `templates/flutter-app/` into themselves.
+This repository holds agent configuration and one Flutter app, Bible Pic, in `app/`
+([ADR 0006](docs/decisions/0006-bible-pic-app-lives-in-app-directory.md)). Other application
+repositories adopt the configuration by copying `templates/flutter-app/` into themselves.
 
 ## Skills
 
@@ -32,6 +34,7 @@ docs/
 evals/                        behavioural tests for the skills
 templates/
   flutter-app/                what gets copied into an app repo
+app/                          the Bible Pic Flutter app (own CLAUDE.md, setup steps inside)
 ```
 
 ## Getting started
@@ -47,6 +50,10 @@ templates/
 
 ## Status
 
-The Flutter stack is deliberately undecided — every choice in
+Bible Pic v1 is written but unverified: see `app/CLAUDE.md` for setup and
+[ADR 0007](docs/decisions/0007-bible-pic-stack.md) for the decisions taken from its spec.
+
+
+In the template, every Flutter stack choice in
 `templates/flutter-app/CLAUDE.md` is marked `TBD` and closed explicitly rather than assumed.
 See [ADR 0002](docs/decisions/0002-stack-choices-stay-open-until-decided.md).
