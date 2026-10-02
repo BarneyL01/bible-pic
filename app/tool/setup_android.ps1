@@ -15,6 +15,8 @@ New-Item -ItemType Directory -Force 'android\app\src\main\res\xml' | Out-Null
 Copy-Item 'android_widget\kotlin\VerseWidgetProvider.kt' $kt -Force
 Copy-Item 'android_widget\res\layout\verse_widget.xml' 'android\app\src\main\res\layout\' -Force
 Copy-Item 'android_widget\res\xml\verse_widget_info.xml' 'android\app\src\main\res\xml\' -Force
+# Launcher icons (replace the Flutter defaults); regenerate with node tool/make_icons.js
+Copy-Item 'android_icons\*' 'android\app\src\main\res\' -Recurse -Force
 
 $manifest = 'android\app\src\main\AndroidManifest.xml'
 $text = Get-Content $manifest -Raw

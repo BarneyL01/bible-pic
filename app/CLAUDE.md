@@ -75,9 +75,10 @@ marks the checks that did not run as **unverified**.
 | `lib/ui/` | screens, the shared `VerseCanvas`, the box editor, the cropper |
 | `web/` | web shell; `sqlite3.wasm` and `drift_worker.js` are downloaded, not committed |
 | `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
+| `android_icons/`, `assets/icon/` | Generated launcher icons and the 1024 px icon; edit the SVG in `tool/make_icons.js` and re-run it, never the PNGs |
 | `test/` | unit and widget tests |
 | `e2e/` | Playwright browser tests against `build/web` |
-| `tool/` | setup scripts, `fetch_web_assets.dart`, `cloud_setup.sh` |
+| `tool/` | setup scripts, `fetch_web_assets.dart`, `make_icons.js`, `cloud_setup.sh` |
 
 ## Stack decisions
 

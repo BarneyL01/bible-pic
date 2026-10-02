@@ -13,6 +13,8 @@ mkdir -p "$KT_DIR" android/app/src/main/res/layout android/app/src/main/res/xml
 cp android_widget/kotlin/VerseWidgetProvider.kt "$KT_DIR/"
 cp android_widget/res/layout/verse_widget.xml android/app/src/main/res/layout/
 cp android_widget/res/xml/verse_widget_info.xml android/app/src/main/res/xml/
+# Launcher icons (replace the Flutter defaults); regenerate with node tool/make_icons.js
+cp -R android_icons/. android/app/src/main/res/
 
 python3 - <<'PY'
 import re

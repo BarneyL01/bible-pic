@@ -39,6 +39,13 @@ Then run it:
 files into it, and registers the widget in the manifest. After it runs, `applicationId` in
 `android/app/build.gradle*` must read `com.biblepic.bible_pic`. On macOS or Linux use `tool/setup_android.sh`.
 
+## Icon
+
+The icon is a sunrise over mountains with a cross above a translucent verse panel. Its single source is the SVG inside
+`tool/make_icons.js`. After editing it, run `cd e2e; npm install; cd ..; node tool/make_icons.js` to rewrite the web icons
+(`web/`), the Android launcher icons (`android_icons/`) and `assets/icon/icon-1024.png`. Android picks the new icons up
+when `tool/setup_android.*` is run again.
+
 ## Check changes
 
 | Check | Command (inside `app/`) | Covers |
@@ -67,7 +74,9 @@ The browser tests run in the workflow but do not block publishing.
 | `lib/ui/` | screens, the shared `VerseCanvas`, the box editor and the cropper |
 | `web/` | web shell; `sqlite3.wasm` and `drift_worker.js` are downloaded, not committed |
 | `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
-| `tool/` | setup scripts, `fetch_web_assets.dart`, `cloud_setup.sh` (installs Flutter in a Claude Code cloud container) |
+| `android_icons/` | Android launcher icons (legacy and adaptive), copied into `android/` by `tool/setup_android.*` |
+| `assets/icon/` | `icon-1024.png`, the full-size icon |
+| `tool/` | setup scripts, `fetch_web_assets.dart`, `make_icons.js` (draws every icon size from one SVG), `cloud_setup.sh` (installs Flutter in a Claude Code cloud container) |
 | `test/` | unit and widget tests |
 | `e2e/` | browser tests |
 
