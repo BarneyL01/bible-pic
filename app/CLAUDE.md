@@ -27,14 +27,15 @@ that repository (ADR 0006), so the repo-root `CLAUDE.md` also applies.
 
 Needs the Flutter SDK (not present in Claude Code cloud containers). From `app/`:
 
-```bash
-tool/setup_android.sh                                   # flutter create + widget files + manifest patch
+```powershell
+.\tool\setup_android.ps1                               # Windows: flutter create + widget files + manifest patch
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs # generates lib/db/database.g.dart
+flutter analyze                                          # only meaningful after the three steps above
 flutter run
 ```
 
-`tool/setup_android.sh` is idempotent. After it runs, `applicationId` in
+On macOS or Linux run `tool/setup_android.sh` instead of the `.ps1`. Both scripts are idempotent. After it runs, `applicationId` in
 `android/app/build.gradle*` must read `com.biblepic.bible_pic`.
 
 ## Layout
@@ -45,7 +46,7 @@ flutter run
 | `lib/data/` | `Repository` (all queries, photo pairing, theme resolution), providers, bulk-import parsers |
 | `lib/services/` | backup/restore, widget rendering (`WidgetSync`) |
 | `lib/ui/` | screens and the shared `VerseCanvas` |
-| `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.sh` |
+| `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
 
 ## Stack decisions
 
