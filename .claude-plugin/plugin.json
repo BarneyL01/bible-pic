@@ -1,0 +1,6 @@
+{
+  "name": "agent-base",
+  "description": "Reusable Claude Code configuration for Flutter apps targeting web and Android.",
+  "version": "0.1.0",
+  "skills": "./.claude/skills"
+}

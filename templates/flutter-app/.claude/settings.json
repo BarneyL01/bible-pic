@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter pub outdated:*)",
+      "Bash(flutter pub deps:*)",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter build web:*)",
+      "Bash(flutter build apk:*)",
+      "Bash(flutter build appbundle:*)",
+      "Bash(flutter gen-l10n:*)",
+      "Bash(flutter --version:*)",
+
+      "Bash(dart analyze:*)",
+      "Bash(dart format:*)",
+      "Bash(dart test:*)",
+      "Bash(dart fix --dry-run:*)",
+      "Bash(dart run build_runner:*)",
+      "Bash(dart pub get:*)",
+
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push:*)",
+
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(sed -n:*)",
+
+      "WebFetch(domain:docs.flutter.dev)",
+      "WebFetch(domain:api.flutter.dev)",
+      "WebFetch(domain:dart.dev)",
+      "WebFetch(domain:api.dart.dev)",
+      "WebFetch(domain:pub.dev)",
+      "WebFetch(domain:developer.android.com)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git clean -fx:*)",
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(flutter pub publish:*)",
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./**/*.keystore)",
+      "Read(./**/*.jks)",
+      "Read(./android/key.properties)",
+      "Read(./**/google-services.json)"
+    ]
+  }
+}
