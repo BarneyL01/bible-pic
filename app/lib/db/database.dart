@@ -47,6 +47,9 @@ class Themes extends Table {
   TextColumn get name => text()();
   TextColumn get font => text().withDefault(const Constant('sans-serif'))();
   RealColumn get fontSize => real().withDefault(const Constant(26))();
+  // Added in schema 2.
+  RealColumn get referenceFontSize =>
+      real().withDefault(const Constant(16))();
   IntColumn get textColor => integer().withDefault(const Constant(0xFFFFFFFF))();
   // 'left' | 'center' | 'right'
   TextColumn get alignment => text().withDefault(const Constant('center'))();
@@ -91,13 +94,21 @@ class AppMeta extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? driftDatabase(name: 'bible_pic'));
 
-  static const dataSchemaVersion = 1;
+  static const dataSchemaVersion = 2;
 
   @override
   int get schemaVersion => dataSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(themes, themes.referenceFontSize);
+            await (update(appMeta)).write(
+              const AppMetaCompanion(schemaVersion: Value(2)),
+            );
+          }
+        },
         onCreate: (m) async {
           await m.createAll();
           await into(appMeta).insert(

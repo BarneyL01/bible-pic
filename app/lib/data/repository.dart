@@ -144,6 +144,7 @@ class Repository {
           name: 'Built-in',
           font: 'sans-serif',
           fontSize: 26,
+          referenceFontSize: 16,
           textColor: 0xFFFFFFFF,
           alignment: 'center',
           panelColor: 0xFF000000,
@@ -268,6 +269,16 @@ class Repository {
     final photo = Photo(id: id, path: name, boxX: 0.1, boxY: 0.55, boxW: 0.8);
     await db.into(db.photos).insert(photo);
     return photo;
+  }
+
+  /// Decodes and shrinks an image to at most 2000 px on the long side (JPEG).
+  Future<Uint8List> shrinkImage(Uint8List bytes) =>
+      compute(_resizeToJpeg, bytes);
+
+  /// Overwrites the stored image of [photo] with [bytes] (shrunk first).
+  Future<void> replacePhotoImage(Photo photo, Uint8List bytes) async {
+    final jpg = await shrinkImage(bytes);
+    await (await photoFile(photo)).writeAsBytes(jpg);
   }
 
   Future<void> savePhoto(Photo photo) =>

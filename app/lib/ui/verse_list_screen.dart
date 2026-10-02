@@ -9,7 +9,8 @@ class VerseListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final verses = ref.watch(versesProvider).value ?? const [];
+    final async = ref.watch(versesProvider);
+    final verses = async.value ?? const [];
     return Scaffold(
       appBar: AppBar(title: const Text('Verses')),
       floatingActionButton: FloatingActionButton(
@@ -17,7 +18,17 @@ class VerseListScreen extends ConsumerWidget {
             builder: (_) => const VerseEditorScreen())),
         child: const Icon(Icons.add),
       ),
-      body: verses.isEmpty
+      body: async.hasError && verses.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Could not load verses:\n${async.error}',
+                    textAlign: TextAlign.center),
+              ),
+            )
+          : async.isLoading && verses.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : verses.isEmpty
           ? const Center(child: Text('No verses yet. Tap + to add one.'))
           : ListView.builder(
               itemCount: verses.length,

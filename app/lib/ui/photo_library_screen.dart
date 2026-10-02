@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import '../data/providers.dart';
 import '../data/repository.dart';
 import '../db/database.dart';
+import 'box_position_screen.dart';
+import 'crop_screen.dart';
 import 'verse_canvas.dart';
 
 class PhotoLibraryScreen extends ConsumerStatefulWidget {
@@ -36,7 +39,12 @@ class _PhotoLibraryScreenState extends ConsumerState<PhotoLibraryScreen> {
     var failed = 0;
     for (final x in picked) {
       try {
-        await repo.addPhoto(await x.readAsBytes());
+        final prepared = await repo.shrinkImage(await x.readAsBytes());
+        if (!mounted) return;
+        final cropped = await Navigator.of(context).push<Uint8List>(
+            MaterialPageRoute(builder: (_) => CropScreen(bytes: prepared)));
+        if (cropped == null) continue; // cancelled: skip this photo
+        await repo.addPhoto(cropped);
       } catch (_) {
         failed++;
       }
@@ -125,6 +133,36 @@ class _PhotoDetailScreenState extends ConsumerState<PhotoDetailScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  static const _sampleReference = 'John 3:16';
+  static const _sampleText = 'For God so loved the world, that he gave his only '
+      'Son, that whoever believes in him should not perish '
+      'but have eternal life.';
+
+  Future<void> _position() async {
+    final b = await Navigator.of(context).push<BoxRect>(MaterialPageRoute(
+      builder: (_) => BoxPositionScreen(
+        reference: _sampleReference,
+        text: _sampleText,
+        theme: _theme!,
+        initial: _box,
+        photoFile: _file,
+      ),
+    ));
+    if (b != null) setState(() => _box = b);
+  }
+
+  Future<void> _recrop() async {
+    final bytes = await _file!.readAsBytes();
+    if (!mounted) return;
+    final cropped = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(builder: (_) => CropScreen(bytes: bytes)));
+    if (cropped == null) return;
+    await ref.read(repositoryProvider).replacePhotoImage(_photo!, cropped);
+    imageCache.clear();
+    imageCache.clearLiveImages();
+    if (mounted) setState(() {});
+  }
+
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -176,20 +214,36 @@ class _PhotoDetailScreenState extends ConsumerState<PhotoDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text('Default text box position. Drag the box to move '
-                    'it; drag the white handles to change its width.'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _recrop,
+                        icon: const Icon(Icons.crop),
+                        label: const Text('Crop to screen'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _position,
+                        icon: const Icon(Icons.open_with),
+                        label: const Text('Move text box'),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
-                AspectRatio(
-                  aspectRatio: 3 / 4,
+                const Text('Default text box position for this photo. Verses '
+                    'can override it in the verse editor.'),
+                const SizedBox(height: 8),
+                CanvasPreview(
                   child: VerseCanvas(
-                    reference: 'John 3:16',
-                    text: 'For God so loved the world, that he gave his only '
-                        'Son, that whoever believes in him should not perish '
-                        'but have eternal life.',
+                    reference: _sampleReference,
+                    text: _sampleText,
                     theme: _theme!,
                     box: _box,
                     photoFile: _file,
-                    onBoxChanged: (b) => setState(() => _box = b),
                   ),
                 ),
               ],

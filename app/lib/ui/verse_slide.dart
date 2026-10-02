@@ -11,8 +11,8 @@ import 'verse_canvas.dart';
 /// Full-screen verse on its photo. Tap toggles favourite; the lock button
 /// pins the shown photo to the verse.
 class VerseSlide extends ConsumerStatefulWidget {
-  const VerseSlide({super.key, required this.verseId, required this.photo});
-  final String verseId;
+  const VerseSlide({super.key, required this.initialVerse, required this.photo});
+  final Verse initialVerse;
   final Photo? photo;
 
   @override
@@ -34,14 +34,20 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
   @override
   Widget build(BuildContext context) {
     final repo = ref.read(repositoryProvider);
-    final verse = ref.watch(verseProvider(widget.verseId)).value;
-    if (verse == null) return const SizedBox.shrink();
+    // Live updates (favourite, edits) win; the snapshot covers the first frame.
+    final verse =
+        ref.watch(verseProvider(widget.initialVerse.id)).value ?? widget.initialVerse;
     // Re-resolve the theme whenever themes or topics change.
     ref.watch(themesProvider);
     ref.watch(topicsProvider);
     return FutureBuilder<AppTheme>(
       future: repo.resolveTheme(verse),
       builder: (context, themeSnap) {
+        if (themeSnap.hasError) {
+          return Center(
+              child: Text('Could not load theme: ${themeSnap.error}',
+                  textAlign: TextAlign.center));
+        }
         final theme = themeSnap.data;
         if (theme == null) return const SizedBox.shrink();
         return FutureBuilder<File?>(

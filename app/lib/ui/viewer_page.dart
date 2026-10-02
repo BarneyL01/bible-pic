@@ -87,13 +87,22 @@ class _ViewerPageState extends ConsumerState<ViewerPage> {
       itemBuilder: (context, index) => FutureBuilder<_Item>(
         future: _itemAt(index),
         builder: (context, snap) {
+          if (snap.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Could not load this verse:\n${snap.error}',
+                    textAlign: TextAlign.center),
+              ),
+            );
+          }
           final item = snap.data;
           if (item == null) {
             return const Center(child: CircularProgressIndicator());
           }
           return VerseSlide(
             key: ValueKey('$index-${item.verse.id}'),
-            verseId: item.verse.id,
+            initialVerse: item.verse,
             photo: item.photo,
           );
         },

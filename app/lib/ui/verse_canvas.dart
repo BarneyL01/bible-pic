@@ -16,6 +16,39 @@ const kMinBoxW = 0.2;
 const kMaxBoxW = 1.2;
 const kMinBoxX = -0.5;
 
+/// Shows [child] (a full-window [VerseCanvas]) scaled down, with text sizes
+/// scaled by the same factor, so the preview matches the real screen.
+class CanvasPreview extends StatelessWidget {
+  const CanvasPreview({super.key, required this.child, this.height = 360});
+  final Widget child;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = MediaQuery.sizeOf(context);
+    return Center(
+      child: SizedBox(
+        height: height,
+        child: AspectRatio(
+          aspectRatio: screen.width / screen.height,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: screen.width,
+              height: screen.height,
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Space around the editable box that holds the corner dots, so each dot has
+/// a 2 * [_dotPad] square touch target.
+const _dotPad = 28.0;
+
 /// The canvas: a plain margin colour, the photo fitted inside it, and the
 /// verse text box positioned by fractions so it may extend past the photo.
 class VerseCanvas extends StatelessWidget {
@@ -39,7 +72,7 @@ class VerseCanvas extends StatelessWidget {
   final ImageProvider? photoProvider;
   final Color marginColor;
 
-  /// When set, the box can be dragged and its width changed.
+  /// When set, the box is draggable and its four corner dots change its width.
   final ValueChanged<BoxRect>? onBoxChanged;
 
   @override
@@ -50,6 +83,12 @@ class VerseCanvas extends StatelessWidget {
       final provider =
           photoProvider ?? (photoFile != null ? FileImage(photoFile!) : null);
       final boxWidth = box.w * w;
+      final textBox = _TextBox(
+        reference: reference,
+        text: text,
+        theme: theme,
+        maxHeight: h * 0.8,
+      );
       return ClipRect(
         child: Stack(
           clipBehavior: Clip.hardEdge,
@@ -59,73 +98,84 @@ class VerseCanvas extends StatelessWidget {
               Positioned.fill(
                 child: Image(image: provider, fit: BoxFit.contain),
               ),
-            Positioned(
-              left: box.x * w,
-              top: box.y * h,
-              width: boxWidth,
-              child: _TextBox(
-                reference: reference,
-                text: text,
-                theme: theme,
-                maxHeight: h * 0.8,
+            if (onBoxChanged == null)
+              Positioned(
+                left: box.x * w,
+                top: box.y * h,
+                width: boxWidth,
+                child: textBox,
+              )
+            else
+              Positioned(
+                left: box.x * w - _dotPad,
+                top: box.y * h - _dotPad,
+                width: boxWidth + 2 * _dotPad,
+                child: _editable(w, h, textBox),
               ),
-            ),
-            if (onBoxChanged != null) ..._handles(w, h),
           ],
         ),
       );
     });
   }
 
-  List<Widget> _handles(double w, double h) {
-    final left = box.x * w;
-    final width = box.w * w;
-    final top = box.y * h;
-    return [
-      // Drag anywhere on the box to move it.
-      Positioned(
-        left: left,
-        top: top,
-        width: width,
-        height: h * 0.3,
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onPanUpdate: (d) => onBoxChanged!(box.copyWith(
-            x: (box.x + d.delta.dx / w).clamp(kMinBoxX, 1.0),
-            y: (box.y + d.delta.dy / h).clamp(-0.1, 0.95),
-          )),
-        ),
-      ),
-      _edgeHandle(left - 14, top, h, (dx) {
-        final nw = (box.w - dx / w).clamp(kMinBoxW, kMaxBoxW);
-        onBoxChanged!(box.copyWith(x: box.x + (box.w - nw), w: nw));
-      }),
-      _edgeHandle(left + width - 14, top, h, (dx) {
-        onBoxChanged!(box.copyWith(w: (box.w + dx / w).clamp(kMinBoxW, kMaxBoxW)));
-      }),
-    ];
-  }
+  Widget _editable(double w, double h, Widget textBox) {
+    void resize({required bool fromLeft, required double dx}) {
+      final nw = (box.w + (fromLeft ? -dx : dx) / w).clamp(kMinBoxW, kMaxBoxW);
+      onBoxChanged!(
+        box.copyWith(x: fromLeft ? box.x + (box.w - nw) : box.x, w: nw),
+      );
+    }
 
-  Widget _edgeHandle(
-      double left, double top, double h, void Function(double dx) onDrag) {
-    return Positioned(
-      left: left,
-      top: top,
-      width: 28,
-      height: h * 0.15,
-      child: GestureDetector(
-        onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
-        child: Center(
-          child: Container(
-            width: 8,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.black54),
-              borderRadius: BorderRadius.circular(4),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(_dotPad),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanUpdate: (d) => onBoxChanged!(box.copyWith(
+              x: (box.x + d.delta.dx / w).clamp(kMinBoxX, 1.0),
+              y: (box.y + d.delta.dy / h).clamp(-0.1, 1.0),
+            )),
+            child: DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: textBox,
             ),
           ),
         ),
-      ),
+        for (final corner in const [
+          (left: true, top: true),
+          (left: false, top: true),
+          (left: true, top: false),
+          (left: false, top: false),
+        ])
+          Positioned(
+            left: corner.left ? 0 : null,
+            right: corner.left ? null : 0,
+            top: corner.top ? 0 : null,
+            bottom: corner.top ? null : 0,
+            width: 2 * _dotPad,
+            height: 2 * _dotPad,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanUpdate: (d) => resize(fromLeft: corner.left, dx: d.delta.dx),
+              child: Center(
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.indigo, width: 3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -183,7 +233,7 @@ class _TextBox extends StatelessWidget {
               textAlign: align,
               style: TextStyle(
                 fontFamily: theme.font,
-                fontSize: theme.fontSize * 0.6,
+                fontSize: theme.referenceFontSize,
                 color: color.withValues(alpha: 0.9),
                 fontWeight: FontWeight.w600,
               ),

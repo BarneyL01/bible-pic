@@ -120,7 +120,12 @@ class BackupService {
     final verses = rows('verses').map(Verse.fromJson).toList();
     final topics = rows('topics').map(Topic.fromJson).toList();
     final photos = rows('photos').map(Photo.fromJson).toList();
-    var themes = rows('themes').map(AppTheme.fromJson).toList();
+    // Backups from schema 1 have no referenceFontSize; derive the old 60% size.
+    var themes = rows('themes').map((r) {
+      r.putIfAbsent('referenceFontSize',
+          () => ((r['fontSize'] as num?) ?? 26).toDouble() * 0.6);
+      return AppTheme.fromJson(r);
+    }).toList();
     final verseTopics = rows('verseTopics').map(VerseTopic.fromJson).toList();
     final photoTopics = rows('photoTopics').map(PhotoTopic.fromJson).toList();
 

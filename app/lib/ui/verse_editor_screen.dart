@@ -7,6 +7,7 @@ import '../data/layout.dart';
 import '../data/providers.dart';
 import '../data/repository.dart';
 import '../db/database.dart';
+import 'box_position_screen.dart';
 import 'verse_canvas.dart';
 
 class VerseEditorScreen extends ConsumerStatefulWidget {
@@ -89,7 +90,17 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
           const SnackBar(content: Text('Reference and text are required.')));
       return;
     }
-    await ref.read(repositoryProvider).saveVerse(_build(), _topicIds.toList());
+    try {
+      await ref
+          .read(repositoryProvider)
+          .saveVerse(_build(), _topicIds.toList());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      }
+      return;
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -242,12 +253,19 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                       ),
                   ],
                 ),
-                const Text('Drag the box to move it; drag the white handles '
-                    'to change its width. Moving it overrides the photo default.'),
+                Text(_override == null
+                    ? 'Using the photo default.'
+                    : 'Custom position for this verse, on every photo.'),
                 const SizedBox(height: 8),
-                AspectRatio(
-                  aspectRatio: 3 / 4,
-                  child: _preview(),
+                FilledButton.icon(
+                  onPressed: _position,
+                  icon: const Icon(Icons.open_with),
+                  label: const Text('Move or resize text box'),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: _position,
+                  child: AbsorbPointer(child: CanvasPreview(child: _preview())),
                 ),
               ],
             ),
@@ -270,10 +288,27 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
           theme: theme,
           box: effectiveBox(verse, _previewPhoto),
           photoFile: _previewFile,
-          onBoxChanged: (b) => setState(() => _override = b),
         );
       },
     );
+  }
+
+  Future<void> _position() async {
+    final verse = _build();
+    final theme = await ref
+        .read(repositoryProvider)
+        .resolveThemeFor(verse, topicIds: _topicIds.toList());
+    if (!mounted) return;
+    final b = await Navigator.of(context).push<BoxRect>(MaterialPageRoute(
+      builder: (_) => BoxPositionScreen(
+        reference: verse.reference.isEmpty ? 'Reference' : verse.reference,
+        text: verse.body.isEmpty ? 'Verse text appears here.' : verse.body,
+        theme: theme,
+        initial: effectiveBox(verse, _previewPhoto),
+        photoFile: _previewFile,
+      ),
+    ));
+    if (b != null) setState(() => _override = b);
   }
 
   Future<void> _newTopic() async {
