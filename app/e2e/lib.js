@@ -35,7 +35,14 @@ exports.driver = (page) => {
   const click = async (name, exact = true, wait = 900) => {
     await exports.enableSemantics(page);
     await page.waitForTimeout(300);
-    await btn(name, exact).click();
+    try {
+      await btn(name, exact).click({ timeout: 4000 });
+    } catch {
+      // Flutter can leave an empty accessibility node over a button; a focused
+      // button still activates from the keyboard.
+      await btn(name, exact).focus();
+      await page.keyboard.press('Enter');
+    }
     await page.waitForTimeout(wait);
   };
   const text = () => page.evaluate(() => [...document.querySelectorAll('flt-semantics')]

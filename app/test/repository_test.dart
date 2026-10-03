@@ -140,6 +140,114 @@ void main() {
     );
   });
 
+  group('photo themes and bulk actions', () {
+    AppTheme theme(String id) => AppTheme(
+      id: id,
+      name: id,
+      font: 'serif',
+      fontSize: 30,
+      referenceFontSize: 18,
+      textColor: 0xFFFFFFFF,
+      alignment: 'left',
+      panelColor: 0xFF000000,
+      panelOpacity: 0.5,
+      cornerRadius: 8,
+      isDefault: false,
+    );
+
+    test('theme order: verse, then photo, then topic, then default', () async {
+      final repo = makeRepo();
+      await repo.saveTheme(theme('verse-theme'));
+      await repo.saveTheme(theme('photo-theme'));
+      await repo.saveTheme(theme('topic-theme'));
+      final topic = await repo.topicIdForName('peace');
+      await repo.setTopicTheme(topic, 'topic-theme');
+      await repo.savePhoto(photo('p'));
+      await repo.setPhotosTheme(['p'], 'photo-theme');
+      final p = (await repo.photoById('p'))!;
+
+      await repo.saveVerse(verse('v'), [topic]);
+      Future<String> resolved(String id, {Photo? on}) async =>
+          (await repo.resolveTheme((await repo.verseById(id))!, photo: on)).id;
+
+      expect(await resolved('v'), 'topic-theme'); // no photo: topic theme
+      expect(await resolved('v', on: p), 'photo-theme'); // photo beats topic
+      await repo.saveVerse(verse('own', themeId: 'verse-theme'), [topic]);
+      expect(await resolved('own', on: p), 'verse-theme'); // verse beats photo
+
+      await repo.setPhotosTheme(['p'], null); // cleared
+      expect(
+        await resolved('v', on: (await repo.photoById('p'))!),
+        'topic-theme',
+      );
+    });
+
+    test('setPhotosTheme changes only the selected photos', () async {
+      final repo = makeRepo();
+      await repo.saveTheme(theme('t'));
+      for (final id in ['a', 'b', 'c']) {
+        await repo.savePhoto(photo(id));
+      }
+      await repo.setPhotosTheme(['a', 'c'], 't');
+      expect((await repo.photoById('a'))!.themeId, 't');
+      expect((await repo.photoById('b'))!.themeId, isNull);
+      expect((await repo.photoById('c'))!.themeId, 't');
+    });
+
+    test('deleting a theme clears it from photos', () async {
+      final repo = makeRepo();
+      await repo.saveTheme(theme('t'));
+      await repo.savePhoto(photo('a'));
+      await repo.setPhotosTheme(['a'], 't');
+      await repo.deleteTheme('t');
+      expect((await repo.photoById('a'))!.themeId, isNull);
+    });
+
+    test(
+      'applyTopicsToPhotos adds and removes without touching others',
+      () async {
+        final repo = makeRepo();
+        for (final id in ['a', 'b']) {
+          await repo.savePhoto(photo(id));
+        }
+        final hope = await repo.topicIdForName('hope');
+        final peace = await repo.topicIdForName('peace');
+        final joy = await repo.topicIdForName('joy');
+        await repo.setPhotoTopics('a', [hope, joy]);
+        await repo.setPhotoTopics('b', [joy]);
+
+        await repo.applyTopicsToPhotos(
+          ['a', 'b'],
+          add: {peace},
+          remove: {hope},
+        );
+        expect((await repo.topicIdsForPhoto('a')).toSet(), {peace, joy});
+        expect((await repo.topicIdsForPhoto('b')).toSet(), {peace, joy});
+
+        // Adding a topic a photo already has is not an error.
+        await repo.applyTopicsToPhotos(['a'], add: {peace});
+        expect((await repo.topicIdsForPhoto('a')).toSet(), {peace, joy});
+      },
+    );
+
+    test('deletePhotos removes rows, bytes and pins', () async {
+      final storage = MemoryPhotoStorage();
+      final repo = makeRepo(storage: storage);
+      for (final id in ['a', 'b', 'c']) {
+        storage.files['$id.jpg'] = Uint8List.fromList([1]);
+        await repo.savePhoto(photo(id));
+      }
+      await repo.saveVerse(verse('v', pinned: 'a'), const []);
+      await repo.deletePhotos([
+        (await repo.photoById('a'))!,
+        (await repo.photoById('b'))!,
+      ]);
+      expect((await repo.allPhotos()).map((p) => p.id), ['c']);
+      expect(storage.files.keys, ['c.jpg']);
+      expect((await repo.verseById('v'))!.pinnedPhotoId, isNull);
+    });
+  });
+
   group('default photos', () {
     final assets = ['a.jpg', 'b.jpg', 'c.jpg'];
     Future<Uint8List> load(String asset) async =>

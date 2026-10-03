@@ -36,6 +36,8 @@ class Photos extends Table {
   RealColumn get boxX => real().withDefault(const Constant(0.1))();
   RealColumn get boxY => real().withDefault(const Constant(0.55))();
   RealColumn get boxW => real().withDefault(const Constant(0.8))();
+  // Added in schema 4: a theme used for verses shown on this photo.
+  TextColumn get themeId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -108,11 +110,11 @@ class AppDatabase extends _$AppDatabase {
   );
 
   /// Database schema version (bump with a migration below).
-  static const dataSchemaVersion = 3;
+  static const dataSchemaVersion = 4;
 
-  /// Version of the backup zip's `data.json`. Unchanged since schema 2: schema 3
-  /// added a column that backups do not carry, so a v3 app writes v2 backups.
-  static const backupFormatVersion = 2;
+  /// Version of the backup zip's `data.json`. 3 added each photo's theme; the
+  /// previous app would drop it silently, so it refuses to read version 3.
+  static const backupFormatVersion = 3;
 
   @override
   int get schemaVersion => dataSchemaVersion;
@@ -125,6 +127,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.addColumn(appMeta, appMeta.defaultPhotosSeeded);
+      }
+      if (from < 4) {
+        await m.addColumn(photos, photos.themeId);
       }
       await (update(appMeta)).write(AppMetaCompanion(schemaVersion: Value(to)));
     },

@@ -295,7 +295,11 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
     return FutureBuilder<AppTheme>(
       future: ref
           .read(repositoryProvider)
-          .resolveThemeFor(verse, topicIds: _topicIds.toList()),
+          .resolveThemeFor(
+            verse,
+            topicIds: _topicIds.toList(),
+            photo: _previewPhoto,
+          ),
       builder: (context, snap) {
         final theme = snap.data;
         if (theme == null) return const SizedBox.shrink();
@@ -314,7 +318,11 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
     final verse = _build();
     final theme = await ref
         .read(repositoryProvider)
-        .resolveThemeFor(verse, topicIds: _topicIds.toList());
+        .resolveThemeFor(
+          verse,
+          topicIds: _topicIds.toList(),
+          photo: _previewPhoto,
+        );
     if (!mounted) return;
     final b = await Navigator.of(context).push<BoxRect>(
       MaterialPageRoute(

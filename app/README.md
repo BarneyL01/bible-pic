@@ -7,6 +7,7 @@ Shows Bible verses you enter yourself on photos you upload. Runs on Android and 
 | Swipe through random verses, favourite with a tap | yes | yes |
 | Topics, favourites, themes (font, sizes, colours, panel) | yes | yes |
 | Five default photos, added once on first launch (delete any you do not want) | yes | yes |
+| Select several photos (long press, or the checklist button) to delete them, set their topics, or give them a theme | yes | yes |
 | Photos with crop-to-screen (drag in any direction, zoom out to see the whole photo); text box you move and resize | yes | yes |
 | Photo pairing: pinned, then topic-matched, then any | yes | yes |
 | Bulk import (pasted text or JSON) | yes | yes |
@@ -53,7 +54,7 @@ when `tool/setup_android.*` is run again.
 | --- | --- | --- |
 | Format | `dart format --set-exit-if-changed lib test tool` | Style. |
 | Analyse | `flutter analyze` | Type errors, lints. |
-| Unit and widget tests | `flutter test` | Photo pairing, theme order, clearing saved values, backup and restore (Replace, Merge, old and newer schemas), the 1 → 2 database upgrade, bulk-import parsing, adding and favouriting a verse. |
+| Unit and widget tests | `flutter test` | Photo pairing, theme order (verse, photo, topic, default), bulk photo actions, default-photo seeding, clearing saved values, backup and restore (Replace, Merge, older and newer formats), the database upgrade from schema 1, bulk-import parsing, adding and favouriting a verse. |
 | Browser tests | `cd e2e; npm install; node run.js` after a web build with `--base-href /app/` | Drives the built site in headless Chromium: moving and resizing the text box by pixel measurement, that the viewer shows the box where it was set, crop fills the screen, bulk import, reload persistence, backup download, restore into a fresh profile, the portrait frame on a wide window. |
 
 The browser tests need Chromium. They find one under `PLAYWRIGHT_BROWSERS_PATH`, or use `CHROME_PATH`, or the

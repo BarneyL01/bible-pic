@@ -138,7 +138,7 @@ class WidgetSync {
     Photo? photo,
     String key,
   ) async {
-    final theme = await repo.resolveTheme(verse);
+    final theme = await repo.resolveTheme(verse, photo: photo);
     ImageProvider? provider;
     if (photo != null) {
       final source = await repo.photoImage(photo);

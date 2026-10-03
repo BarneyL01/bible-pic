@@ -51,8 +51,9 @@ Last reviewed: 2026-10-02 (Bible Pic app terms, web surface)
 | **canvas** | The full-window area holding the photo, a plain margin colour, and the text box. | Text box geometry is stored as fractions of the canvas. On a window wider than 9:16 the canvas is the phone frame. |
 | **phone frame** | The centred 9:16 column the app is shown in on a window wider than a phone. | Keeps the canvas phone-shaped on desktop web (ADR 0008). |
 | **text box** | The movable, resizable panel that holds a verse on the canvas. | May extend past the photo's edge onto the margin. Width is stored; height fits the text. |
-| **theme** | A named style preset: font, size, text colour, alignment, panel colour, opacity, corner radius. | Excludes position. Applied: pinned verse's theme, then topic theme, then default. |
+| **theme** | A named style preset: font, verse and reference sizes, text colour, alignment, panel colour, opacity, corner radius. | Excludes position. Applied: the verse's own theme, then the theme of the photo it is shown on, then a topic theme, then the default. ADR 0010. |
 | **pairing** | Choosing the photo shown with a verse: pinned photo, then topic-matched photo, then any photo. | Recently shown photos are skipped where enough exist. |
+| **selection mode** | The Photo library state in which tapping a photo selects it, entered by a long press or the checklist button. | Actions apply to every selected photo: set topics, set theme, delete. |
 | **pinned photo** | A photo fixed to one verse. | Set by the lock button or the verse editor. |
 | **verse of the day** | The verse chosen by a random draw seeded by the date. | Same all day; changes at midnight. Used by the widget, not the main screen. |
 | **backup file** | The zip holding `manifest.json`, `data.json`, and `photos/`. | Restore is *Replace* or *Merge*. |

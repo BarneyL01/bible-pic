@@ -72,7 +72,7 @@ marks the checks that did not run as **unverified**.
 | `lib/db/` | drift tables and `AppDatabase` (`database.g.dart` is generated) |
 | `lib/data/` | `Repository` (all queries, photo pairing, theme resolution), providers, bulk-import parsers, the `PhotoStorage` interface |
 | `lib/services/` | backup/restore, widget rendering (`WidgetSync`), `platform*.dart` (the only place `dart:io`, `path_provider` and `share_plus` are used, and the web equivalents) |
-| `lib/ui/` | screens, the shared `VerseCanvas`, the box editor, the cropper |
+| `lib/ui/` | screens, the shared `VerseCanvas`, the box editor, the cropper, the photo library with its selection mode |
 | `web/` | web shell; `sqlite3.wasm` and `drift_worker.js` are downloaded, not committed |
 | `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
 | `assets/photos/` | The five bundled default photos (9:20 crops); `lib/data/default_photos.dart` lists them, `Repository.seedDefaultPhotos` adds them once |

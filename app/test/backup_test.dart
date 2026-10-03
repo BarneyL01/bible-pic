@@ -72,6 +72,51 @@ void main() {
     ); // kept the local one
   });
 
+  test('a photo theme survives a backup and restore', () async {
+    final source = makeRepo();
+    await source.savePhoto(photo('p'));
+    await source.setPhotosTheme(['p'], 'default-theme');
+    final zip = await BackupService(source).buildBackup(appVersion: 'test');
+    final target = makeRepo();
+    await BackupService(target).restore(zip, RestoreMode.replace);
+    expect((await target.photoById('p'))!.themeId, 'default-theme');
+  });
+
+  test('a backup written before photo themes still restores', () async {
+    final archive = Archive()
+      ..addFile(
+        ArchiveFile.bytes(
+          'manifest.json',
+          bytes(utf8.encode(jsonEncode({'schemaVersion': 2}))),
+        ),
+      )
+      ..addFile(
+        ArchiveFile.bytes(
+          'data.json',
+          bytes(
+            utf8.encode(
+              jsonEncode({
+                'photos': [
+                  {
+                    'id': 'p',
+                    'path': 'p.jpg',
+                    'boxX': 0.1,
+                    'boxY': 0.5,
+                    'boxW': 0.8,
+                  },
+                ],
+              }),
+            ),
+          ),
+        ),
+      );
+    final repo = makeRepo();
+    await BackupService(
+      repo,
+    ).restore(bytes(ZipEncoder().encodeBytes(archive)), RestoreMode.replace);
+    expect((await repo.photoById('p'))!.themeId, isNull);
+  });
+
   test('a schema 1 backup without referenceFontSize still restores', () async {
     final archive = Archive()
       ..addFile(

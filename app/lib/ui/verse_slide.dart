@@ -44,7 +44,7 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
     ref.watch(themesProvider);
     ref.watch(topicsProvider);
     return FutureBuilder<AppTheme>(
-      future: repo.resolveTheme(verse),
+      future: repo.resolveTheme(verse, photo: widget.photo),
       builder: (context, themeSnap) {
         if (themeSnap.hasError) {
           return Center(

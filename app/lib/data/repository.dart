@@ -123,19 +123,26 @@ class Repository {
             ..limit(1))
           .getSingleOrNull();
 
-  /// Pinned verse's theme, then topic theme, then the default theme.
-  Future<AppTheme> resolveTheme(Verse verse) async =>
-      resolveThemeFor(verse, topicIds: await topicIdsForVerse(verse.id));
+  /// The verse's own theme, then the theme of the [photo] it is shown on, then
+  /// a topic theme, then the default theme.
+  Future<AppTheme> resolveTheme(Verse verse, {Photo? photo}) async =>
+      resolveThemeFor(
+        verse,
+        topicIds: await topicIdsForVerse(verse.id),
+        photo: photo,
+      );
 
   /// As [resolveTheme], for a verse whose topics are not yet saved.
   Future<AppTheme> resolveThemeFor(
     Verse verse, {
     required List<String> topicIds,
+    Photo? photo,
   }) async {
-    if (verse.themeId != null) {
+    for (final id in [verse.themeId, photo?.themeId]) {
+      if (id == null) continue;
       final t = await (db.select(
         db.themes,
-      )..where((t) => t.id.equals(verse.themeId!))).getSingleOrNull();
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
       if (t != null) return t;
     }
     if (topicIds.isNotEmpty) {
@@ -189,6 +196,9 @@ class Repository {
     );
     await (db.update(db.topics)..where((v) => v.themeId.equals(id))).write(
       const TopicsCompanion(themeId: Value(null)),
+    );
+    await (db.update(db.photos)..where((v) => v.themeId.equals(id))).write(
+      const PhotosCompanion(themeId: Value(null)),
     );
     await (db.delete(db.themes)..where((x) => x.id.equals(id))).go();
   });
@@ -301,7 +311,14 @@ class Repository {
     final id = newId();
     final name = '$id.jpg';
     await storage.write(name, jpg);
-    final photo = Photo(id: id, path: name, boxX: 0.1, boxY: 0.55, boxW: 0.8);
+    final photo = Photo(
+      id: id,
+      path: name,
+      boxX: 0.1,
+      boxY: 0.55,
+      boxW: 0.8,
+      themeId: null,
+    );
     await db.into(db.photos).insert(photo);
     return photo;
   }
@@ -333,6 +350,42 @@ class Repository {
               );
         }
       });
+
+  /// Sets (or, with null, clears) the theme of every photo in [photoIds].
+  Future<void> setPhotosTheme(List<String> photoIds, String? themeId) =>
+      (db.update(db.photos)..where((p) => p.id.isIn(photoIds))).write(
+        PhotosCompanion(themeId: Value(themeId)),
+      );
+
+  /// Adds [add] to, and removes [remove] from, the topics of every photo in
+  /// [photoIds]. Topics in neither set are left as they are.
+  Future<void> applyTopicsToPhotos(
+    List<String> photoIds, {
+    Set<String> add = const {},
+    Set<String> remove = const {},
+  }) => db.transaction(() async {
+    if (remove.isNotEmpty) {
+      await (db.delete(
+        db.photoTopics,
+      )..where((t) => t.photoId.isIn(photoIds) & t.topicId.isIn(remove))).go();
+    }
+    for (final photoId in photoIds) {
+      for (final topicId in add) {
+        await db
+            .into(db.photoTopics)
+            .insert(
+              PhotoTopicsCompanion.insert(photoId: photoId, topicId: topicId),
+              mode: InsertMode.insertOrIgnore,
+            );
+      }
+    }
+  });
+
+  Future<void> deletePhotos(List<Photo> photos) async {
+    for (final p in photos) {
+      await deletePhoto(p);
+    }
+  }
 
   Future<void> deletePhoto(Photo photo) async {
     await db.transaction(() async {
@@ -416,7 +469,14 @@ class Repository {
       await db
           .into(db.photos)
           .insert(
-            Photo(id: id, path: name, boxX: 0.1, boxY: 0.55, boxW: 0.8),
+            Photo(
+              id: id,
+              path: name,
+              boxX: 0.1,
+              boxY: 0.55,
+              boxW: 0.8,
+              themeId: null,
+            ),
             mode: InsertMode.insertOrIgnore,
           );
     }

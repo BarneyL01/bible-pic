@@ -44,8 +44,14 @@ Verse verse(String id, {String? pinned, String? themeId, bool fav = false}) =>
       favourite: fav,
     );
 
-Photo photo(String id) =>
-    Photo(id: id, path: '$id.jpg', boxX: 0.1, boxY: 0.5, boxW: 0.8);
+Photo photo(String id) => Photo(
+  id: id,
+  path: '$id.jpg',
+  boxX: 0.1,
+  boxY: 0.5,
+  boxW: 0.8,
+  themeId: null,
+);
 
 /// Disposes the widget tree and lets drift's stream-cleanup timers fire, so a
 /// widget test does not end with pending timers.
