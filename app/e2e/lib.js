@@ -51,5 +51,17 @@ exports.driver = (page) => {
     for (let i = 1; i <= steps; i++) { await page.mouse.move(x + dx * i / steps, y + dy * i / steps); await page.waitForTimeout(25); }
     await page.mouse.up(); await page.waitForTimeout(500);
   };
-  return { btn, click, text, typeVerse, drag };
+  /** The app ships five default photos; specs that need a known photo delete them first. Ends in the photo library. */
+  const clearDefaultPhotos = async () => {
+    await click('Menu', false);
+    await click('Photo library', false, 1500);
+    for (let i = 0; i < 10; i++) {
+      const photo = page.getByRole('button', { name: /^Photo \d+$/ }).first();
+      if ((await photo.count()) === 0) break;
+      await photo.click(); await page.waitForTimeout(900);
+      await click('Delete photo', false);
+      await click('Delete', true);
+    }
+  };
+  return { btn, click, text, typeVerse, drag, clearDefaultPhotos };
 };

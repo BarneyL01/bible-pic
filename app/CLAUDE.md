@@ -75,6 +75,7 @@ marks the checks that did not run as **unverified**.
 | `lib/ui/` | screens, the shared `VerseCanvas`, the box editor, the cropper |
 | `web/` | web shell; `sqlite3.wasm` and `drift_worker.js` are downloaded, not committed |
 | `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
+| `assets/photos/` | The five bundled default photos (9:20 crops); `lib/data/default_photos.dart` lists them, `Repository.seedDefaultPhotos` adds them once |
 | `android_icons/`, `assets/icon/` | Generated launcher icons and the 1024 px icon; edit the SVG in `tool/make_icons.js` and re-run it, never the PNGs |
 | `test/` | unit and widget tests |
 | `e2e/` | Playwright browser tests against `build/web` |

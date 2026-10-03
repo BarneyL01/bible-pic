@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUpAll(() => driftRuntimeOptions.dontWarnAboutMultipleDatabases = true);
 
-  test('schema 1 database upgrades to 2 and gains referenceFontSize', () async {
+  test('schema 1 database upgrades to 3 and gains the new columns', () async {
     final dir = Directory.systemTemp.createTempSync('bible_pic_migration');
     addTearDown(() => dir.deleteSync(recursive: true));
     final file = File('${dir.path}/db.sqlite');
@@ -18,6 +18,9 @@ void main() {
     await db.customSelect('SELECT 1').get();
     await db.customStatement(
       'ALTER TABLE themes DROP COLUMN reference_font_size',
+    );
+    await db.customStatement(
+      'ALTER TABLE app_meta DROP COLUMN default_photos_seeded',
     );
     await db.customStatement('PRAGMA user_version = 1');
     await db.close();
@@ -31,7 +34,8 @@ void main() {
     final theme = await (db.select(db.themes)..limit(1)).getSingle();
     expect(theme.referenceFontSize, 16);
     final meta = await db.select(db.appMeta).getSingle();
-    expect(meta.schemaVersion, 2);
+    expect(meta.schemaVersion, 3);
+    expect(meta.defaultPhotosSeeded, isFalse);
     await db.close();
   });
 }

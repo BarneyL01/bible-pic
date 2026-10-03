@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../db/database.dart';
 
+/// The plain colour around a photo that does not fill the canvas. The cropper
+/// paints it too, so a photo zoomed out in the cropper looks the same in the
+/// viewer.
+const kCanvasMargin = Color(0xFF111111);
+
 TextAlign alignmentFromName(String name) => switch (name) {
   'left' => TextAlign.left,
   'right' => TextAlign.right,
@@ -57,7 +62,7 @@ class VerseCanvas extends StatelessWidget {
     required this.theme,
     required this.box,
     this.photoProvider,
-    this.marginColor = const Color(0xFF111111),
+    this.marginColor = kCanvasMargin,
     this.onBoxChanged,
   });
 

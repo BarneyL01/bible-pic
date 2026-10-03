@@ -82,7 +82,11 @@ class _PhotoLibraryScreenState extends ConsumerState<PhotoLibraryScreen> {
                       builder: (_) => PhotoDetailScreen(photoId: p.id),
                     ),
                   ),
-                  child: PhotoThumb(key: ValueKey(p.id), photo: p),
+                  child: Semantics(
+                    button: true,
+                    label: 'Photo ${i + 1}',
+                    child: PhotoThumb(key: ValueKey(p.id), photo: p),
+                  ),
                 );
               },
             ),
@@ -199,7 +203,11 @@ class _PhotoDetailScreenState extends ConsumerState<PhotoDetailScreen> {
       appBar: AppBar(
         title: const Text('Photo'),
         actions: [
-          IconButton(onPressed: _delete, icon: const Icon(Icons.delete)),
+          IconButton(
+            tooltip: 'Delete photo',
+            onPressed: _delete,
+            icon: const Icon(Icons.delete),
+          ),
           TextButton(onPressed: _save, child: const Text('Save')),
         ],
       ),

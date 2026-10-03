@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:bible_pic/db/database.dart';
 import 'package:bible_pic/services/widget_sync.dart';
@@ -137,6 +138,44 @@ void main() {
       [v.pinnedPhotoId, v.themeId, v.boxX, v.boxY, v.boxW],
       [null, null, null, null, null],
     );
+  });
+
+  group('default photos', () {
+    final assets = ['a.jpg', 'b.jpg', 'c.jpg'];
+    Future<Uint8List> load(String asset) async =>
+        Uint8List.fromList(asset.codeUnits);
+
+    test('are added once, with their bytes, under fixed ids', () async {
+      final storage = MemoryPhotoStorage();
+      final repo = makeRepo(storage: storage);
+      await repo.seedDefaultPhotos(assets, load);
+      final photos = await repo.allPhotos();
+      expect(photos.map((p) => p.id).toSet(), {
+        'default-photo-1',
+        'default-photo-2',
+        'default-photo-3',
+      });
+      expect(storage.files['default-photo-2.jpg'], 'b.jpg'.codeUnits);
+
+      await repo.seedDefaultPhotos(assets, load); // second launch
+      expect(await repo.allPhotos(), hasLength(3));
+    });
+
+    test('a deleted default photo does not come back', () async {
+      final repo = makeRepo();
+      await repo.seedDefaultPhotos(assets, load);
+      await repo.deletePhoto((await repo.photoById('default-photo-1'))!);
+      await repo.seedDefaultPhotos(assets, load);
+      expect(await repo.photoById('default-photo-1'), isNull);
+      expect(await repo.allPhotos(), hasLength(2));
+    });
+
+    test('are paired like any other photo', () async {
+      final repo = makeRepo();
+      await repo.seedDefaultPhotos(assets, load);
+      await repo.saveVerse(verse('v'), const []);
+      expect(await repo.pairPhoto((await repo.verseById('v'))!), isNotNull);
+    });
   });
 
   test('verse of the day is stable for a date and independent of order', () {

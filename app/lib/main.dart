@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 
+import 'data/default_photos.dart';
 import 'data/providers.dart';
 import 'services/platform.dart';
 import 'services/widget_sync.dart';
@@ -29,6 +30,14 @@ class BiblePicApp extends ConsumerStatefulWidget {
 class _BiblePicAppState extends ConsumerState<BiblePicApp> {
   StreamSubscription<Uri?>? _clicks;
   Timer? _debounce;
+
+  /// Adds the bundled photos on first launch before the first verse is shown,
+  /// so the first slide already has photos to pair with. A failure must not
+  /// stop the app from opening.
+  late final Future<void> _ready = ref
+      .read(repositoryProvider)
+      .seedDefaultPhotos(kDefaultPhotoAssets, loadAssetBytes)
+      .catchError((Object _) {});
 
   @override
   void initState() {
@@ -97,7 +106,12 @@ class _BiblePicAppState extends ConsumerState<BiblePicApp> {
         useMaterial3: true,
       ),
       builder: (context, child) => PhoneFrame(child: child!),
-      home: const MainScreen(),
+      home: FutureBuilder<void>(
+        future: _ready,
+        builder: (context, snap) => snap.connectionState == ConnectionState.done
+            ? const MainScreen()
+            : const Scaffold(body: Center(child: CircularProgressIndicator())),
+      ),
     );
   }
 }

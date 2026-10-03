@@ -15,6 +15,7 @@ cp android_widget/res/layout/verse_widget.xml android/app/src/main/res/layout/
 cp android_widget/res/xml/verse_widget_info.xml android/app/src/main/res/xml/
 # Launcher icons (replace the Flutter defaults); regenerate with node tool/make_icons.js
 cp -R android_icons/. android/app/src/main/res/
+echo "Installed $(find android_icons -type f | wc -l) launcher icon files"
 
 python3 - <<'PY'
 import re

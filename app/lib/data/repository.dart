@@ -396,6 +396,35 @@ class Repository {
     }
   }
 
+  // ---------- Default photos ----------
+
+  /// Adds the bundled photos once. [assets] are asset paths; [load] returns an
+  /// asset's bytes. They are stored under fixed ids, so the same photo is never
+  /// added twice (a Merge restore of a backup that holds them skips them), and
+  /// the AppMeta flag keeps a photo you delete from coming back.
+  Future<void> seedDefaultPhotos(
+    List<String> assets,
+    Future<Uint8List> Function(String asset) load,
+  ) async {
+    final meta = await db.select(db.appMeta).getSingle();
+    if (meta.defaultPhotosSeeded) return;
+    for (var i = 0; i < assets.length; i++) {
+      final id = 'default-photo-${i + 1}';
+      if (await photoById(id) != null) continue;
+      final name = '$id.jpg';
+      await storage.write(name, await load(assets[i]));
+      await db
+          .into(db.photos)
+          .insert(
+            Photo(id: id, path: name, boxX: 0.1, boxY: 0.55, boxW: 0.8),
+            mode: InsertMode.insertOrIgnore,
+          );
+    }
+    await (db.update(
+      db.appMeta,
+    )).write(const AppMetaCompanion(defaultPhotosSeeded: Value(true)));
+  }
+
   Future<void> markBackedUp() => (db.update(
     db.appMeta,
   )).write(AppMetaCompanion(lastBackup: Value(DateTime.now())));

@@ -6,7 +6,7 @@ module.exports = async ({ url, tmp, check }) => {
   const zip = path.join(tmp, 'backup.zip');
   let s = await launch(); let page = s.page; let d = driver(page);
   await page.goto(url); await page.waitForTimeout(6000); await enableSemantics(page);
-  await d.click('Menu', false); await d.click('Photo library', false);
+  await d.clearDefaultPhotos();
   const [fc] = await Promise.all([page.waitForEvent('filechooser'), d.btn('Add photos').click()]);
   await fc.setFiles(path.join(tmp, 'portrait.png')); await page.waitForTimeout(2500);
   await d.click('No crop', false, 3000); await d.click('Back', false);

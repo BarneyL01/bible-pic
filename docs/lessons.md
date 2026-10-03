@@ -30,3 +30,13 @@ The latest version on pub.dev is not always installable. `flutter pub get` is th
 ## The user runs PowerShell on Windows
 Give the user PowerShell commands, from the right directory, in order; do not give bash scripts.
 Say which branch the files are on.
+
+## InteractiveViewer moves the photo after you let go, without calling your callback
+A fast drag leaves the viewer coasting, and `onInteractionUpdate` and `onInteractionEnd` do not fire
+for that motion. Enforce limits (such as keeping a photo on screen) in a listener on the
+`TransformationController`, which sees every change.
+
+## Synthetic mouse drags over-count when the steps are large
+In browser tests, a drag made of a few large mouse steps moves things further than the pointer did
+(Flutter counts the movement that crossed its slop twice). Use many small steps (about 2.5 px), as a
+finger sends.

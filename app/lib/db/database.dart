@@ -84,6 +84,9 @@ class AppMeta extends Table {
   IntColumn get id => integer().withDefault(const Constant(1))();
   IntColumn get schemaVersion => integer()();
   DateTimeColumn get lastBackup => dateTime().nullable()();
+  // Added in schema 3: the bundled default photos are added once, then never again.
+  BoolColumn get defaultPhotosSeeded =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -104,7 +107,12 @@ class AppDatabase extends _$AppDatabase {
     ),
   );
 
-  static const dataSchemaVersion = 2;
+  /// Database schema version (bump with a migration below).
+  static const dataSchemaVersion = 3;
+
+  /// Version of the backup zip's `data.json`. Unchanged since schema 2: schema 3
+  /// added a column that backups do not carry, so a v3 app writes v2 backups.
+  static const backupFormatVersion = 2;
 
   @override
   int get schemaVersion => dataSchemaVersion;
@@ -114,10 +122,11 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.addColumn(themes, themes.referenceFontSize);
-        await (update(
-          appMeta,
-        )).write(const AppMetaCompanion(schemaVersion: Value(2)));
       }
+      if (from < 3) {
+        await m.addColumn(appMeta, appMeta.defaultPhotosSeeded);
+      }
+      await (update(appMeta)).write(AppMetaCompanion(schemaVersion: Value(to)));
     },
     onCreate: (m) async {
       await m.createAll();

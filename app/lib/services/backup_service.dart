@@ -63,7 +63,7 @@ class BackupService {
     };
     final manifest = {
       'appVersion': appVersion,
-      'schemaVersion': AppDatabase.dataSchemaVersion,
+      'schemaVersion': AppDatabase.backupFormatVersion,
       'date': DateTime.now().toIso8601String(),
       'counts': {for (final e in data.entries) e.key: (e.value as List).length},
     };
@@ -102,7 +102,7 @@ class BackupService {
     }
     final manifest = jsonDecode(utf8.decode(manifestFile.readBytes()!)) as Map;
     final schema = manifest['schemaVersion'] as int? ?? 0;
-    if (schema > AppDatabase.dataSchemaVersion) {
+    if (schema > AppDatabase.backupFormatVersion) {
       throw BackupException(
         'This backup comes from a newer version of the app (schema $schema). '
         'Install the newer app version, then restore.',

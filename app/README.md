@@ -6,7 +6,8 @@ Shows Bible verses you enter yourself on photos you upload. Runs on Android and 
 | --- | --- | --- |
 | Swipe through random verses, favourite with a tap | yes | yes |
 | Topics, favourites, themes (font, sizes, colours, panel) | yes | yes |
-| Photos with crop-to-screen; text box you move and resize | yes | yes |
+| Five default photos, added once on first launch (delete any you do not want) | yes | yes |
+| Photos with crop-to-screen (drag in any direction, zoom out to see the whole photo); text box you move and resize | yes | yes |
 | Photo pairing: pinned, then topic-matched, then any | yes | yes |
 | Bulk import (pasted text or JSON) | yes | yes |
 | Backup and restore (zip: share sheet on Android, download on web) | yes | yes |
@@ -74,6 +75,7 @@ The browser tests run in the workflow but do not block publishing.
 | `lib/ui/` | screens, the shared `VerseCanvas`, the box editor and the cropper |
 | `web/` | web shell; `sqlite3.wasm` and `drift_worker.js` are downloaded, not committed |
 | `android_widget/` | Kotlin provider and XML copied into `android/` by `tool/setup_android.*` |
+| `assets/photos/` | The five default photos, cropped to 9:20 and declared in `pubspec.yaml` |
 | `android_icons/` | Android launcher icons (legacy and adaptive), copied into `android/` by `tool/setup_android.*` |
 | `assets/icon/` | `icon-1024.png`, the full-size icon |
 | `tool/` | setup scripts, `fetch_web_assets.dart`, `make_icons.js` (draws every icon size from one SVG), `cloud_setup.sh` (installs Flutter in a Claude Code cloud container) |

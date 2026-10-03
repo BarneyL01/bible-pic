@@ -16,7 +16,17 @@ Copy-Item 'android_widget\kotlin\VerseWidgetProvider.kt' $kt -Force
 Copy-Item 'android_widget\res\layout\verse_widget.xml' 'android\app\src\main\res\layout\' -Force
 Copy-Item 'android_widget\res\xml\verse_widget_info.xml' 'android\app\src\main\res\xml\' -Force
 # Launcher icons (replace the Flutter defaults); regenerate with node tool/make_icons.js
-Copy-Item 'android_icons\*' 'android\app\src\main\res\' -Recurse -Force
+$res = 'android\app\src\main\res'
+$iconCount = 0
+Get-ChildItem 'android_icons' -Directory | ForEach-Object {
+    $target = Join-Path $res $_.Name
+    New-Item -ItemType Directory -Force $target | Out-Null
+    Get-ChildItem $_.FullName -File | ForEach-Object {
+        Copy-Item $_.FullName $target -Force
+        $iconCount++
+    }
+}
+Write-Host "Installed $iconCount launcher icon files into $res"
 
 $manifest = 'android\app\src\main\AndroidManifest.xml'
 $text = Get-Content $manifest -Raw
