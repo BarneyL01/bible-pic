@@ -4,7 +4,7 @@ Shows Bible verses you enter yourself on photos you upload. Runs on Android and 
 
 | Feature | Android | Web |
 | --- | --- | --- |
-| Swipe through random verses, favourite with a tap | yes | yes |
+| Swipe through random verses, favourite with a tap, lock a photo to a verse (tap the lock again to unlock) | yes | yes |
 | Topics, favourites, themes (font, sizes, colours, panel) | yes | yes |
 | Five default photos, added once on first launch (delete any you do not want) | yes | yes |
 | Select several photos (long press, or the checklist button) to delete them, set their topics, or give them a theme | yes | yes |

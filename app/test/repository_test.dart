@@ -286,6 +286,16 @@ void main() {
     });
   });
 
+  test('a photo can be locked to a verse and unlocked again', () async {
+    final repo = makeRepo();
+    await repo.savePhoto(photo('p'));
+    await repo.saveVerse(verse('v'), const []);
+    await repo.pinPhoto('v', 'p');
+    expect((await repo.verseById('v'))!.pinnedPhotoId, 'p');
+    await repo.pinPhoto('v', null);
+    expect((await repo.verseById('v'))!.pinnedPhotoId, isNull);
+  });
+
   test('verse of the day is stable for a date and independent of order', () {
     final verses = [
       for (final id in ['c', 'a', 'b', 'd']) verse(id),

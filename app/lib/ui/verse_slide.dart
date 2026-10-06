@@ -21,6 +21,23 @@ class VerseSlide extends ConsumerStatefulWidget {
   ConsumerState<VerseSlide> createState() => _VerseSlideState();
 }
 
+/// Top of the icon row so its centre lines up with the menu button. The viewer
+/// body is padded below its app bar, so the row sits at that padding minus the
+/// app bar's height (or at the status bar when there is no app bar).
+double _toolbarTop(BuildContext context) {
+  final top = MediaQuery.paddingOf(context).top;
+  return top >= kToolbarHeight ? top - kToolbarHeight : top;
+}
+
+/// A small, translucent icon that stays readable on any photo but does not
+/// compete with the verse. [strong] makes an active state a little clearer.
+Widget _quietIcon(IconData icon, {required bool strong}) => Icon(
+  icon,
+  size: 22,
+  color: Colors.white.withValues(alpha: strong ? 0.85 : 0.5),
+  shadows: const [Shadow(blurRadius: 3, color: Colors.black54)],
+);
+
 class _VerseSlideState extends ConsumerState<VerseSlide> {
   late Future<ImageProvider?> _image;
 
@@ -76,33 +93,42 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
                     box: effectiveBox(verse, widget.photo),
                     photoProvider: fileSnap.data,
                   ),
+                  // Quiet status icons in the menu button's row, top right. The
+                  // viewer's body is padded below its (transparent) app bar, so
+                  // the row starts at that padding minus the app bar's height.
                   Positioned(
-                    top: 8,
-                    right: 8,
-                    child: SafeArea(
+                    top: _toolbarTop(context),
+                    right: 4,
+                    child: SizedBox(
+                      height: kToolbarHeight,
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (widget.photo != null)
                             IconButton(
                               tooltip: isPinned
-                                  ? 'Photo locked to this verse'
+                                  ? 'Unlock photo'
                                   : 'Lock this photo to the verse',
-                              icon: Icon(
+                              visualDensity: VisualDensity.compact,
+                              icon: _quietIcon(
                                 isPinned ? Icons.lock : Icons.lock_open,
-                                color: Colors.white,
+                                strong: isPinned,
                               ),
-                              onPressed: isPinned
-                                  ? null
-                                  : () => repo.pinPhoto(
-                                      verse.id,
-                                      widget.photo!.id,
-                                    ),
+                              // Tapping a locked photo unlocks it, so the
+                              // app picks photos for this verse again.
+                              onPressed: () => repo.pinPhoto(
+                                verse.id,
+                                isPinned ? null : widget.photo!.id,
+                              ),
                             ),
-                          Icon(
-                            verse.favourite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: Colors.white,
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: _quietIcon(
+                              verse.favourite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              strong: verse.favourite,
+                            ),
                           ),
                         ],
                       ),
