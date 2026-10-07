@@ -11,6 +11,7 @@ import '../db/database.dart';
 import 'box_position_screen.dart';
 import 'crop_screen.dart';
 import 'photo_thumb.dart';
+import 'topic_picker.dart';
 import 'verse_canvas.dart';
 
 class PhotoLibraryScreen extends ConsumerStatefulWidget {
@@ -500,7 +501,6 @@ class _PhotoDetailScreenState extends ConsumerState<PhotoDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final topics = ref.watch(topicsProvider).value ?? const <Topic>[];
     final themes = ref.watch(themesProvider).value ?? const <AppTheme>[];
     return Scaffold(
       appBar: AppBar(
@@ -519,20 +519,10 @@ class _PhotoDetailScreenState extends ConsumerState<PhotoDetailScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text('Topics'),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final t in topics)
-                      FilterChip(
-                        label: Text(t.name),
-                        selected: _topicIds.contains(t.id),
-                        onSelected: (s) => setState(
-                          () =>
-                              s ? _topicIds.add(t.id) : _topicIds.remove(t.id),
-                        ),
-                      ),
-                  ],
+                TopicSelector(
+                  selected: _topicIds,
+                  hint: 'verses in these topics prefer this photo',
+                  onChanged: (ids) => setState(() => _topicIds = ids),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(

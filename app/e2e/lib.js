@@ -70,5 +70,22 @@ exports.driver = (page) => {
       await click('Delete', true);
     }
   };
-  return { btn, click, text, typeVerse, drag, clearDefaultPhotos };
+  /** Rectangles of the accessibility nodes whose label or text is [match] (a string for an exact match, or a RegExp). */
+  const rects = (match) => page.evaluate(({ source, flags, exact }) => {
+    const re = source === null ? null : new RegExp(source, flags);
+    return [...document.querySelectorAll('flt-semantics')]
+      .map((e) => ({ text: (e.getAttribute('aria-label') || e.textContent || '').trim(), role: e.getAttribute('role') || '', r: e.getBoundingClientRect() }))
+      .filter((n) => (re ? re.test(n.text) : n.text === exact))
+      .map((n) => ({ text: n.text, role: n.role, x: n.r.x, y: n.r.y, w: n.r.width, h: n.r.height }));
+  }, typeof match === 'string' ? { source: null, flags: '', exact: match } : { source: match.source, flags: match.flags, exact: null });
+  /** Labels of the buttons and chips whose top lies between the nodes labelled [from] and [to], in reading order. */
+  const buttonsBetween = async (from, to) => {
+    const top = (await rects(from))[0], bottom = (await rects(to))[0];
+    const all = await rects(/./);
+    return all
+      .filter((n) => (n.role === 'button' || n.role === 'checkbox') && n.y > top.y && n.y < bottom.y)
+      .sort((a, b) => a.y - b.y || a.x - b.x)
+      .map((n) => n.text);
+  };
+  return { btn, click, text, typeVerse, drag, clearDefaultPhotos, rects, buttonsBetween };
 };

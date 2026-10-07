@@ -7,6 +7,7 @@ import '../data/repository.dart';
 import '../db/database.dart';
 import 'box_position_screen.dart';
 import 'photo_thumb.dart';
+import 'topic_picker.dart';
 import 'verse_canvas.dart';
 
 class VerseEditorScreen extends ConsumerStatefulWidget {
@@ -168,7 +169,6 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final topics = ref.watch(topicsProvider).value ?? const <Topic>[];
     final themes = ref.watch(themesProvider).value ?? const <AppTheme>[];
     return Scaffold(
       appBar: AppBar(
@@ -210,25 +210,13 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
                   onChanged: (v) => setState(() => _favourite = v),
                 ),
                 const SizedBox(height: 8),
-                Text('Topics', style: Theme.of(context).textTheme.titleSmall),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final t in topics)
-                      FilterChip(
-                        label: Text(t.name),
-                        selected: _topicIds.contains(t.id),
-                        onSelected: (s) => setState(
-                          () =>
-                              s ? _topicIds.add(t.id) : _topicIds.remove(t.id),
-                        ),
-                      ),
-                    ActionChip(
-                      avatar: const Icon(Icons.add, size: 16),
-                      label: const Text('New topic'),
-                      onPressed: _newTopic,
-                    ),
-                  ],
+                TopicSelector(
+                  selected: _topicIds,
+                  subject: _reference.text.trim().isEmpty
+                      ? null
+                      : _reference.text.trim(),
+                  showUsedMost: true,
+                  onChanged: (ids) => setState(() => _topicIds = ids),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -336,29 +324,5 @@ class _VerseEditorScreenState extends ConsumerState<VerseEditorScreen> {
       ),
     );
     if (b != null) setState(() => _override = b);
-  }
-
-  Future<void> _newTopic() async {
-    final c = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('New topic'),
-        content: TextField(controller: c, autofocus: true),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, c.text),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    if (name == null || name.trim().isEmpty) return;
-    final id = await ref.read(repositoryProvider).topicIdForName(name);
-    setState(() => _topicIds.add(id));
   }
 }
