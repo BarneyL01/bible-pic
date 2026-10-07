@@ -196,4 +196,23 @@ void main() {
       throwsA(isA<BackupException>()),
     );
   });
+
+  test('a backup taken after a merge restores the merged topic', () async {
+    final source = makeRepo();
+    final a = await source.topicIdForName('anxiety');
+    final b = await source.topicIdForName('worry');
+    await source.saveVerse(verse('v1'), [a]);
+    await source.saveVerse(verse('v2'), [b]);
+    final merged = await source.mergeTopics(
+      topicIds: [a, b],
+      keepName: 'worry',
+    );
+    final zip = await BackupService(source).buildBackup(appVersion: 'test');
+    final target = makeRepo();
+    await BackupService(target).restore(zip, RestoreMode.replace);
+    final topics = await target.watchTopics().first;
+    expect(topics.map((t) => t.name), ['worry']);
+    expect(topics.single.id, merged);
+    expect((await target.versesForTopic(merged)).length, 2);
+  });
 }

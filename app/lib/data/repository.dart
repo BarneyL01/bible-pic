@@ -239,6 +239,83 @@ class Repository {
     await (db.delete(db.topics)..where((t) => t.id.equals(topicId))).go();
   });
 
+  /// Deletes every topic in [topicIds] with its verse and photo links, in one
+  /// transaction. Verses and photos stay.
+  Future<void> deleteTopics(List<String> topicIds) => db.transaction(() async {
+    for (final id in topicIds.toSet()) {
+      await deleteTopic(id);
+    }
+  });
+
+  /// Merges [topicIds] into one topic called [keepName] and returns its id.
+  ///
+  /// The target is the selected topic whose name equals [keepName] ignoring
+  /// case, otherwise the topic [keepName] names (created when new). Verse and
+  /// photo links move to the target without duplicates, the other topics are
+  /// deleted, and the target keeps its theme or, when it has none, takes the
+  /// first source theme found in [topicIds] order.
+  Future<String> mergeTopics({
+    required List<String> topicIds,
+    required String keepName,
+  }) => db.transaction(() async {
+    final ids = topicIds.toSet().toList();
+    final rows = <Topic>[];
+    for (final id in ids) {
+      final row = await (db.select(
+        db.topics,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
+      if (row != null) rows.add(row);
+    }
+    final wanted = keepName.trim().toLowerCase();
+    final selectedMatch = rows
+        .where((t) => t.name.trim().toLowerCase() == wanted)
+        .firstOrNull;
+    final targetId = selectedMatch?.id ?? await topicIdForName(keepName);
+    final target =
+        selectedMatch ??
+        await (db.select(
+          db.topics,
+        )..where((t) => t.id.equals(targetId))).getSingle();
+    final sources = rows.where((t) => t.id != targetId).toList();
+
+    String? themeId = target.themeId;
+    themeId ??= sources.map((t) => t.themeId).nonNulls.firstOrNull;
+
+    for (final src in sources) {
+      final verseLinks = await (db.select(
+        db.verseTopics,
+      )..where((t) => t.topicId.equals(src.id))).get();
+      for (final l in verseLinks) {
+        await db
+            .into(db.verseTopics)
+            .insert(
+              VerseTopicsCompanion.insert(
+                verseId: l.verseId,
+                topicId: targetId,
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
+      }
+      final photoLinks = await (db.select(
+        db.photoTopics,
+      )..where((t) => t.topicId.equals(src.id))).get();
+      for (final l in photoLinks) {
+        await db
+            .into(db.photoTopics)
+            .insert(
+              PhotoTopicsCompanion.insert(
+                photoId: l.photoId,
+                topicId: targetId,
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
+      }
+      await deleteTopic(src.id);
+    }
+    if (themeId != target.themeId) await setTopicTheme(targetId, themeId);
+    return targetId;
+  });
+
   // ---------- Verses ----------
 
   Future<void> saveVerse(Verse verse, List<String> topicIds) => db.transaction(

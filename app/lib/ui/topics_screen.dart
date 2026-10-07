@@ -34,6 +34,13 @@ class _TopicsScreenState extends ConsumerState<TopicsScreen> {
   TopicSort _sort = TopicSort.az;
   bool _noPhotoOnly = false;
   final _headings = <String, GlobalKey>{};
+  final _selected = <String>{};
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggle(String id) => setState(() {
+    if (!_selected.remove(id)) _selected.add(id);
+  });
 
   @override
   void dispose() {
@@ -64,9 +71,11 @@ class _TopicsScreenState extends ConsumerState<TopicsScreen> {
     }
   }
 
-  Future<void> _setTheme(Topic t) async {
+  /// Asks for a theme. Returns the theme id, `''` for the default theme, or
+  /// null when cancelled.
+  Future<String?> _pickTheme() {
     final themes = ref.read(themesProvider).value ?? const <AppTheme>[];
-    final picked = await showDialog<String>(
+    return showDialog<String>(
       context: context,
       builder: (_) => SimpleDialog(
         title: const Text('Topic theme'),
@@ -83,11 +92,74 @@ class _TopicsScreenState extends ConsumerState<TopicsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _setTheme(Topic t) async {
+    final picked = await _pickTheme();
     if (picked != null) {
       await ref
           .read(repositoryProvider)
           .setTopicTheme(t.id, picked.isEmpty ? null : picked);
     }
+  }
+
+  // ---------- actions on the selection ----------
+
+  Future<void> _themeSelected() async {
+    final picked = await _pickTheme();
+    if (picked == null) return;
+    final repo = ref.read(repositoryProvider);
+    for (final id in _selected.toList()) {
+      await repo.setTopicTheme(id, picked.isEmpty ? null : picked);
+    }
+    if (mounted) setState(_selected.clear);
+  }
+
+  Future<void> _deleteSelected() async {
+    final n = _selected.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Delete $n ${n == 1 ? 'topic' : 'topics'}?'),
+        content: const Text(
+          'Verses and photos stay; only these topic tags are removed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(repositoryProvider).deleteTopics(_selected.toList());
+    if (mounted) setState(_selected.clear);
+  }
+
+  Future<void> _mergeSelected(List<Topic> topics) async {
+    final chosen = sortedByName(topics.where((t) => _selected.contains(t.id)));
+    if (chosen.length < 2) return;
+    final keepName = await showDialog<String>(
+      context: context,
+      builder: (_) => _MergeDialog(names: [for (final t in chosen) t.name]),
+    );
+    if (keepName == null) return;
+    await ref
+        .read(repositoryProvider)
+        .mergeTopics(
+          topicIds: [for (final t in chosen) t.id],
+          keepName: keepName,
+        );
+    if (!mounted) return;
+    setState(_selected.clear);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Merged ${chosen.length} topics into $keepName')),
+    );
   }
 
   Future<void> _newTopic() async {
@@ -111,9 +183,15 @@ class _TopicsScreenState extends ConsumerState<TopicsScreen> {
         ? null
         : themes.where((x) => x.id == t.themeId).map((x) => x.name).firstOrNull;
     final small = Theme.of(context).textTheme.labelSmall;
+    final picked = _selected.contains(t.id);
     return GroupedTile(
       isFirst: isFirst,
       isLast: isLast,
+      selected: picked,
+      leading: _selecting
+          ? Icon(picked ? Icons.check_circle : Icons.radio_button_unchecked)
+          : null,
+      onLongPress: () => _toggle(t.id),
       title: Text(t.name),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,24 +210,26 @@ class _TopicsScreenState extends ConsumerState<TopicsScreen> {
             ),
         ],
       ),
-      onTap: () => _open(t),
-      trailing: PopupMenuButton<String>(
-        tooltip: 'More for ${t.name}',
-        onSelected: (v) async {
-          if (v == 'rename') {
-            await _rename(t);
-          } else if (v == 'theme') {
-            await _setTheme(t);
-          } else if (v == 'delete') {
-            await ref.read(repositoryProvider).deleteTopic(t.id);
-          }
-        },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'rename', child: Text('Rename')),
-          PopupMenuItem(value: 'theme', child: Text('Set theme')),
-          PopupMenuItem(value: 'delete', child: Text('Delete')),
-        ],
-      ),
+      onTap: () => _selecting ? _toggle(t.id) : _open(t),
+      trailing: _selecting
+          ? null
+          : PopupMenuButton<String>(
+              tooltip: 'More for ${t.name}',
+              onSelected: (v) async {
+                if (v == 'rename') {
+                  await _rename(t);
+                } else if (v == 'theme') {
+                  await _setTheme(t);
+                } else if (v == 'delete') {
+                  await ref.read(repositoryProvider).deleteTopic(t.id);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rename', child: Text('Rename')),
+                PopupMenuItem(value: 'theme', child: Text('Set theme')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
     );
   }
 
@@ -230,75 +310,224 @@ class _TopicsScreenState extends ConsumerState<TopicsScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Topics')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _newTopic,
-        icon: const Icon(Icons.add),
-        label: const Text('New topic'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              controller: _search,
-              decoration: InputDecoration(
-                hintText: 'Search topics',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        icon: const Icon(Icons.close),
-                        onPressed: () => setState(_search.clear),
-                      ),
-                border: const OutlineInputBorder(),
+    return PopScope(
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(_selected.clear);
+      },
+      child: Scaffold(
+        appBar: _selecting
+            ? AppBar(
+                backgroundColor: scheme.secondaryContainer,
+                leading: IconButton(
+                  tooltip: 'Cancel selection',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(_selected.clear),
+                ),
+                title: Text('${_selected.length} selected'),
+              )
+            : AppBar(title: const Text('Topics')),
+        floatingActionButton: _selecting
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: _newTopic,
+                icon: const Icon(Icons.add),
+                label: const Text('New topic'),
               ),
-              onChanged: (_) => setState(() {}),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: _body(list, groups, showIndex, noPhotoCount),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SegmentedButton<TopicSort>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: TopicSort.az, label: Text('A–Z')),
-                    ButtonSegment(
-                      value: TopicSort.mostVerses,
-                      label: Text('Most verses'),
-                    ),
-                  ],
-                  selected: {_sort},
-                  onSelectionChanged: (s) => setState(() => _sort = s.first),
+            if (_selecting)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 16,
+                child: SafeArea(
+                  child: Center(child: _selectionBar(topics, scheme)),
                 ),
-                FilterChip(
-                  label: Text('No photo · $noPhotoCount'),
-                  selected: _noPhotoOnly,
-                  onSelected: (v) => setState(() => _noPhotoOnly = v),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(child: list),
-                if (showIndex)
-                  LetterIndex(
-                    letters: [for (final g in groups) g.key],
-                    onJump: (l) => jumpToHeading(_headings[l]!),
-                  ),
-              ],
-            ),
-          ),
-        ],
+              ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _selectionBar(List<Topic> topics, ColorScheme scheme) {
+    final style = TextButton.styleFrom(
+      foregroundColor: scheme.onInverseSurface,
+      disabledForegroundColor: scheme.onInverseSurface.withValues(alpha: 0.38),
+    );
+    return Material(
+      color: scheme.inverseSurface,
+      shape: const StadiumBorder(),
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton.icon(
+              style: style,
+              onPressed: _selected.length >= 2
+                  ? () => _mergeSelected(topics)
+                  : null,
+              icon: const Icon(Icons.merge),
+              label: const Text('Merge'),
+            ),
+            TextButton.icon(
+              style: style,
+              onPressed: _themeSelected,
+              icon: const Icon(Icons.palette_outlined),
+              label: const Text('Theme'),
+            ),
+            IconButton(
+              tooltip: 'Delete selected topics',
+              color: scheme.onInverseSurface,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _deleteSelected,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _body(
+    Widget list,
+    List<MapEntry<String, List<Topic>>> groups,
+    bool showIndex,
+    int noPhotoCount,
+  ) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: TextField(
+            controller: _search,
+            decoration: InputDecoration(
+              hintText: 'Search topics',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(_search.clear),
+                    ),
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SegmentedButton<TopicSort>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: TopicSort.az, label: Text('A–Z')),
+                  ButtonSegment(
+                    value: TopicSort.mostVerses,
+                    label: Text('Most verses'),
+                  ),
+                ],
+                selected: {_sort},
+                onSelectionChanged: (s) => setState(() => _sort = s.first),
+              ),
+              FilterChip(
+                label: Text('No photo · $noPhotoCount'),
+                selected: _noPhotoOnly,
+                onSelected: (v) => setState(() => _noPhotoOnly = v),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: list),
+              if (showIndex)
+                LetterIndex(
+                  letters: [for (final g in groups) g.key],
+                  onJump: (l) => jumpToHeading(_headings[l]!),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MergeDialog extends StatefulWidget {
+  const _MergeDialog({required this.names});
+  final List<String> names;
+
+  @override
+  State<_MergeDialog> createState() => _MergeDialogState();
+}
+
+class _MergeDialogState extends State<_MergeDialog> {
+  static const _newName = '\u0000new';
+  late String _choice = widget.names.first;
+  final _name = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final creating = _choice == _newName;
+    final result = creating ? _name.text.trim() : _choice;
+    return AlertDialog(
+      title: Text('Merge ${widget.names.length} topics'),
+      content: SingleChildScrollView(
+        child: RadioGroup<String>(
+          groupValue: _choice,
+          onChanged: (v) => setState(() => _choice = v ?? _choice),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Keep this name:'),
+              for (final n in widget.names)
+                RadioListTile<String>(value: n, title: Text(n)),
+              const RadioListTile<String>(
+                value: _newName,
+                title: Text('New name…'),
+              ),
+              if (creating)
+                TextField(
+                  controller: _name,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Topic name'),
+                  onChanged: (_) => setState(() {}),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: result.isEmpty
+              ? null
+              : () => Navigator.pop(context, result),
+          child: const Text('Merge'),
+        ),
+      ],
     );
   }
 }

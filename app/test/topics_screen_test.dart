@@ -125,4 +125,89 @@ void main() {
     expect(find.textContaining('No topics yet'), findsOneWidget);
     await finish(tester);
   });
+
+  group('selecting topics', () {
+    testWidgets('long press selects; tapping toggles; the add button hides', (
+      tester,
+    ) async {
+      await pumpTopics(tester, repo);
+      await tester.longPress(find.text('hope'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      await tester.tap(find.text('peace'));
+      await tester.pumpAndSettle();
+      expect(find.text('2 selected'), findsOneWidget);
+      await tester.tap(find.text('peace'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 selected'), findsOneWidget);
+      await tester.tap(find.byTooltip('Cancel selection'));
+      await tester.pumpAndSettle();
+      expect(find.text('Topics'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('Merge needs two topics', (tester) async {
+      await pumpTopics(tester, repo);
+      await tester.longPress(find.text('hope'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Merge'))
+            .enabled,
+        isFalse,
+      );
+      await tester.tap(find.text('grief'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Merge'))
+            .enabled,
+        isTrue,
+      );
+      await finish(tester);
+    });
+
+    testWidgets('merging keeps the chosen name and the union of verses', (
+      tester,
+    ) async {
+      await pumpTopics(tester, repo);
+      await tester.longPress(find.text('hope'));
+      await tester.tap(find.text('grief'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Merge'));
+      await tester.pumpAndSettle();
+      expect(find.text('Merge 2 topics'), findsOneWidget);
+      await tester.tap(find.text('hope').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Merge'));
+      await tester.pumpAndSettle();
+      expect(find.text('grief'), findsNothing);
+      expect(find.text('2 verses · 1 photo'), findsOneWidget);
+      expect(find.text('Topics'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('delete asks first and keeps the verses', (tester) async {
+      await pumpTopics(tester, repo);
+      await tester.longPress(find.text('hope'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Delete selected topics'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete 1 topic?'), findsOneWidget);
+      expect(
+        find.text('Verses and photos stay; only these topic tags are removed.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(find.text('hope'), findsNothing);
+      expect(
+        (await tester.runAsync(() => repo.watchVerses().first))!.length,
+        2,
+      );
+      await finish(tester);
+    });
+  });
 }

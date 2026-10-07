@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:bible_pic/data/repository.dart';
 import 'package:bible_pic/db/database.dart';
 import 'package:bible_pic/services/widget_sync.dart';
 import 'package:drift/drift.dart' show Value;
@@ -310,5 +311,90 @@ void main() {
     };
     expect(across.length, greaterThan(1));
     expect(Random(1).nextInt(2), isNotNull); // keep dart:math import honest
+  });
+
+  group('merging and deleting topics', () {
+    Future<(Repository, String, String)> twoTopics() async {
+      final repo = makeRepo();
+      await repo.savePhoto(photo('p1'));
+      await repo.savePhoto(photo('p2'));
+      final a = await repo.topicIdForName('anxiety');
+      final b = await repo.topicIdForName('worry');
+      await repo.saveVerse(verse('v1'), [a, b]);
+      await repo.saveVerse(verse('v2'), [a]);
+      await repo.saveVerse(verse('v3'), [b]);
+      await repo.setPhotoTopics('p1', [a]);
+      await repo.setPhotoTopics('p2', [b]);
+      return (repo, a, b);
+    }
+
+    test('merging leaves one link per verse and moves photo links', () async {
+      final (repo, a, b) = await twoTopics();
+      final target = await repo.mergeTopics(
+        topicIds: [a, b],
+        keepName: 'anxiety',
+      );
+      expect(target, a);
+      for (final v in ['v1', 'v2', 'v3']) {
+        expect(await repo.topicIdsForVerse(v), [a]);
+      }
+      expect(await repo.topicIdsForPhoto('p1'), [a]);
+      expect(await repo.topicIdsForPhoto('p2'), [a]);
+    });
+
+    test('merging deletes the other topics and their link rows', () async {
+      final (repo, a, b) = await twoTopics();
+      await repo.mergeTopics(topicIds: [a, b], keepName: 'anxiety');
+      expect((await repo.watchTopics().first).map((t) => t.id), [a]);
+      final links = await repo.watchVerseTopics().first;
+      expect(links.where((l) => l.topicId == b), isEmpty);
+      final photoLinks = await repo.watchPhotoTopics().first;
+      expect(photoLinks.where((l) => l.topicId == b), isEmpty);
+    });
+
+    test('the target keeps its own theme', () async {
+      final (repo, a, b) = await twoTopics();
+      await repo.setTopicTheme(a, 'kept');
+      await repo.setTopicTheme(b, 'other');
+      await repo.mergeTopics(topicIds: [a, b], keepName: 'anxiety');
+      expect((await repo.watchTopics().first).single.themeId, 'kept');
+    });
+
+    test('a target without a theme takes the first source theme', () async {
+      final (repo, a, b) = await twoTopics();
+      await repo.setTopicTheme(b, 'from-source');
+      await repo.mergeTopics(topicIds: [a, b], keepName: 'anxiety');
+      expect((await repo.watchTopics().first).single.themeId, 'from-source');
+    });
+
+    test(
+      'merging into a new name creates one topic holding all links',
+      () async {
+        final (repo, a, b) = await twoTopics();
+        await repo.setTopicTheme(a, 'theme-a');
+        final target = await repo.mergeTopics(
+          topicIds: [a, b],
+          keepName: 'Fear and worry',
+        );
+        final topics = await repo.watchTopics().first;
+        expect(topics.map((t) => t.name), ['Fear and worry']);
+        expect(topics.single.id, target);
+        expect(topics.single.themeId, 'theme-a');
+        expect((await repo.versesForTopic(target)).length, 3);
+      },
+    );
+
+    test(
+      'deleteTopics removes topics and links but keeps verses and photos',
+      () async {
+        final (repo, a, b) = await twoTopics();
+        await repo.deleteTopics([a, b]);
+        expect(await repo.watchTopics().first, isEmpty);
+        expect(await repo.watchVerseTopics().first, isEmpty);
+        expect(await repo.watchPhotoTopics().first, isEmpty);
+        expect((await repo.watchVerses().first).length, 3);
+        expect(await repo.photoById('p1'), isNotNull);
+      },
+    );
   });
 }
