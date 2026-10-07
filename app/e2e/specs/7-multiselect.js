@@ -10,7 +10,7 @@ module.exports = async ({ url, check }) => {
 
   // A topic and a second theme to choose from.
   await d.click('Menu', false); await d.click('Topics', false, 1200);
-  await d.click('Add topic', false);
+  await d.click('New topic', false);
   await page.getByRole('textbox').first().click(); await page.keyboard.type('peace');
   await d.click('Save', true, 900); await d.click('Back', false);
   await d.click('Menu', false); await d.click('Themes', false, 1200);

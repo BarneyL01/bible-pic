@@ -225,33 +225,36 @@ class _TopicPickerSheetState extends ConsumerState<_TopicPickerSheet> {
                           'No topics yet. Type a name to create one.',
                         ),
                       )
-                    : ListView(
-                        children: query.isNotEmpty
-                            ? [for (final t in matches) _row(t, counts)]
-                            : [
-                                for (final g in groups) ...[
-                                  Padding(
-                                    key: _headings.putIfAbsent(
-                                      g.key,
-                                      GlobalKey.new,
+                    : SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: query.isNotEmpty
+                              ? [for (final t in matches) _row(t, counts)]
+                              : [
+                                  for (final g in groups) ...[
+                                    Padding(
+                                      key: _headings.putIfAbsent(
+                                        g.key,
+                                        GlobalKey.new,
+                                      ),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        12,
+                                        16,
+                                        4,
+                                      ),
+                                      child: Text(
+                                        g.key,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(color: scheme.primary),
+                                      ),
                                     ),
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      12,
-                                      16,
-                                      4,
-                                    ),
-                                    child: Text(
-                                      g.key,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(color: scheme.primary),
-                                    ),
-                                  ),
-                                  for (final t in g.value) _row(t, counts),
+                                    for (final t in g.value) _row(t, counts),
+                                  ],
                                 ],
-                              ],
+                        ),
                       ),
               ),
               if (showIndex)
