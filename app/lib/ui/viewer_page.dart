@@ -13,6 +13,40 @@ class _Item {
   final Photo? photo;
 }
 
+/// A full-screen viewer under a titled app bar. With verses the bar floats
+/// translucent over the photo; with none, nothing is behind it, so it is the
+/// ordinary app bar instead of a grey band over a light background.
+class ViewerScaffold extends StatelessWidget {
+  const ViewerScaffold({
+    super.key,
+    required this.title,
+    required this.pool,
+    required this.emptyMessage,
+  });
+  final String title;
+  final List<Verse> pool;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (pool.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: ViewerPage(pool: pool, emptyMessage: emptyMessage),
+      );
+    }
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: Colors.black45,
+        foregroundColor: Colors.white,
+      ),
+      body: ViewerPage(pool: pool, emptyMessage: emptyMessage),
+    );
+  }
+}
+
 /// Swipes through a pool of verses. With [infinite] the pool is sampled at
 /// random forever (main screen); otherwise each verse is shown once in order.
 class ViewerPage extends ConsumerStatefulWidget {

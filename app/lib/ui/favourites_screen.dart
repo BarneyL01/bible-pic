@@ -10,25 +10,22 @@ class FavouritesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Favourites'),
-        backgroundColor: Colors.black45,
-        foregroundColor: Colors.white,
-      ),
-      body: FutureBuilder<List<Verse>>(
-        future: ref.read(repositoryProvider).favouriteVerses(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return ViewerPage(
-            pool: snap.data!,
-            emptyMessage: 'No favourites yet. Tap a verse to favourite it.',
+    return FutureBuilder<List<Verse>>(
+      future: ref.read(repositoryProvider).favouriteVerses(),
+      builder: (context, snap) {
+        final verses = snap.data;
+        if (verses == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Favourites')),
+            body: const Center(child: CircularProgressIndicator()),
           );
-        },
-      ),
+        }
+        return ViewerScaffold(
+          title: 'Favourites',
+          pool: verses,
+          emptyMessage: 'No favourites yet. Tap a verse to favourite it.',
+        );
+      },
     );
   }
 }

@@ -42,17 +42,10 @@ class TopicsScreen extends ConsumerWidget {
                       if (!context.mounted) return;
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => Scaffold(
-                            extendBodyBehindAppBar: true,
-                            appBar: AppBar(
-                              title: Text(t.name),
-                              backgroundColor: Colors.black45,
-                              foregroundColor: Colors.white,
-                            ),
-                            body: ViewerPage(
-                              pool: verses,
-                              emptyMessage: 'No verses in this topic yet.',
-                            ),
+                          builder: (_) => ViewerScaffold(
+                            title: t.name,
+                            pool: verses,
+                            emptyMessage: 'No verses in this topic yet.',
                           ),
                         ),
                       );

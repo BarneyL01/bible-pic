@@ -62,7 +62,7 @@ class ThemesScreen extends ConsumerWidget {
                 ),
               ),
               title: Text(t.name),
-              subtitle: t.isDefault ? const Text('Default') : null,
+              subtitle: t.isDefault ? const Text('In use as default') : null,
               trailing: t.isDefault
                   ? null
                   : TextButton(

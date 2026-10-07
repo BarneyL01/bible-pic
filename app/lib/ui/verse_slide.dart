@@ -121,14 +121,21 @@ class _VerseSlideState extends ConsumerState<VerseSlide> {
                                 isPinned ? null : widget.photo!.id,
                               ),
                             ),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: _quietIcon(
+                          // A real button; tapping anywhere on the verse still
+                          // toggles favourite too.
+                          IconButton(
+                            tooltip: verse.favourite
+                                ? 'Remove from favourites'
+                                : 'Add to favourites',
+                            visualDensity: VisualDensity.compact,
+                            icon: _quietIcon(
                               verse.favourite
                                   ? Icons.favorite
                                   : Icons.favorite_border,
                               strong: verse.favourite,
                             ),
+                            onPressed: () =>
+                                repo.setFavourite(verse.id, !verse.favourite),
                           ),
                         ],
                       ),
